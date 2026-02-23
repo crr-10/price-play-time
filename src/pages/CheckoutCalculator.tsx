@@ -73,6 +73,13 @@ const CheckoutCalculator = () => {
               </SelectContent>
             </Select>
           </div>
+          {userType !== "fresh" && (
+            <p className="text-xs text-muted-foreground">
+              {userType === "renewal_after"
+                ? "First plan purchased after 16 Feb 2024"
+                : "First plan purchased before 16 Feb 2024"}
+            </p>
+          )}
         </div>
 
         {/* Two-column layout */}
