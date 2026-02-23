@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -75,6 +75,8 @@ const PlanListValidation = () => {
           <h1 className="text-2xl font-bold tracking-tight">Choose Your Plan</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Pricing validation tool — verify plan list prices
+            <span className="mx-2">·</span>
+            <Link to="/qa" className="text-primary underline underline-offset-2 hover:text-primary/80">QA Checklist</Link>
           </p>
         </div>
 
