@@ -1,58 +1,73 @@
 
 
-# Fix Pricing Logic + Checkout UI Overhaul
+# Add Renewal Pricing with Two Tiers
 
-## Problem
-The current `calculateBreakdown` uses `MRP x percentage` which gives non-round numbers (e.g., 28% of 3,599 = 1,007.72 -> rounds to 1,008, giving 2,591 instead of 2,599). The backend actually uses fixed discounted prices, and the "percentage" shown on UI (28%, 50%, 44%) is just a rounded display value.
+## Overview
+Rename "New User" to "Fresh Plan Purchase" and split "Renewal" into two sub-cases:
+- **Renewal (after 16 Feb 2024)**: Higher Platinum/Enterprise prices
+- **Renewal (before 16 Feb 2024)**: Even higher Platinum/Enterprise prices
 
-Actual backend percentages:
-- Diamond: (3599 - 2599) / 3599 = 27.79%
-- Platinum: (5999 - 2999) / 5999 = 50.01%
-- Enterprise: (8999 - 4999) / 8999 = 44.45%
+Diamond pricing stays the same across all three cases. Discount percentages (27.79%, 50.01%, 44.45%) remain unchanged.
+
+## Pricing Data Summary
+
+| Plan | Fresh | Renewal After 16 Feb | Renewal Before 16 Feb |
+|------|-------|---------------------|-----------------------|
+| Diamond MRP/yr | 3,599 | 3,599 | 3,599 |
+| Diamond disc/yr | 2,599 | 2,599 | 2,599 |
+| Platinum MRP/yr | 5,999 | 8,000 | 12,000 |
+| Platinum disc/yr | 2,999 | 3,999 | 5,999 |
+| Enterprise MRP/yr | 8,999 | 10,799 | 16,199 |
+| Enterprise disc/yr | 4,999 | 5,999 | 8,999 |
+
+Monthly prices are derived as annual/12 rounded.
 
 ## Changes
 
-### 1. Fix `calculateBreakdown` in `src/lib/pricing-data.ts`
-- Instead of `originalPrice * planDiscountPercent / 100`, compute plan discount as:
-  - `priceAfterPlanDiscount = annualDiscounted * years` (e.g., Platinum 2yr = 2999 * 2 = 5998)
-  - `planDiscountAmount = originalPrice - priceAfterPlanDiscount`
-- Add `DURATION_YEARS` constant: `{ "1yr": 1, "2yr": 2, "3yr": 3, "5yr": 5, "10yr": 10 }`
-- Store actual discount percentages (27.79, 50.01, 44.45) for display in the breakdown, but keep the rounded ones (28, 50, 44) for the UI badge display
-- Add `ANNUAL_DISCOUNTED` lookup by plan and userType so the function can derive the correct post-discount price
-- Multi-year and coupon discounts continue to apply sequentially on the post-plan-discount price (unchanged logic)
+### 1. `src/lib/pricing-data.ts`
+- Change `UserType` from `"new" | "renewal"` to `"fresh" | "renewal_after" | "renewal_before"`
+- Add `PLANS` data per user type (3 sets of plan info with different MRP/discounted values)
+- Update `MRP_TABLE` to have 3 variants (fresh, renewal_after, renewal_before) with multi-year values derived as `annualMRP * years`
+- Update `ANNUAL_DISCOUNTED` with all 3 user types
+- Update `calculateBreakdown` to accept the new `UserType`
 
-### 2. Redesign Checkout UI in `src/pages/CheckoutCalculator.tsx`
-- **Two-column layout**: Left column has all selectors, right column has a sticky "Price Details" card
-- **Price Details card** matching the production screenshots:
-  - "Original Price" row with the MRP value
-  - **Collapsible "Total Discount (X%)"** row in green with a chevron, expandable to show:
-    - `{percent}% Discount` (plan discount amount, showing the actual % like 27.79%)
-    - `Multi Year Extra Off` (amount, if applicable)
-    - `Coupon Discount ({percent}%)` (amount, if applicable)
-  - "Price After Discount" (bold)
-  - "GST (18%)" row
-  - Dashed separator
-  - **"Total Price"** large and bold
-- Selectors stay visible alongside the price card so testers don't scroll
+### 2. `src/pages/PlanListValidation.tsx`
+- Replace the New/Renewal toggle with a 3-option selector: "Fresh Plan Purchase" / "Renewal (after 16 Feb 2024)" / "Renewal (before 16 Feb 2024)"
+- Plan cards update dynamically based on selected user type, showing correct MRP and discounted prices
+- Pass selected user type to checkout page via URL params
 
-### 3. Add New/Renewal toggle to Plan List page
-- Add a toggle at the top of `src/pages/PlanListValidation.tsx` for New/Renewal user type
-- When renewal data arrives, the plan cards and checklist will reflect renewal pricing
+### 3. `src/pages/CheckoutCalculator.tsx`
+- Update the user type selector from a toggle to a 3-option control
+- All price calculations automatically use the correct data for the selected user type
+- Read initial user type from URL params
 
 ## Technical Details
 
-**Files to modify:**
-- `src/lib/pricing-data.ts` -- fix `calculateBreakdown`, add `DURATION_YEARS`, add `ANNUAL_DISCOUNTED` map
-- `src/pages/CheckoutCalculator.tsx` -- two-column layout, collapsible discount breakdown, production-matching UI
-- `src/pages/PlanListValidation.tsx` -- add user type toggle
+**MRP Tables (multi-year = annual MRP x years):**
 
-**Calculation example (Platinum, 2yr, 15% coupon, new user):**
-1. MRP = 11,998
-2. Plan discount: 11,998 - (2,999 x 2) = 11,998 - 5,998 = 6,000
-3. After plan discount: 5,998
-4. Multi-year 5%: 5,998 x 5% = 300 -> After: 5,698
-5. Coupon 15%: 5,698 x 15% = 855 -> After: 4,843
-6. Total discount: 11,998 - 4,843 = 7,155
-7. GST 18%: 4,843 x 18% = 872
-8. Total: 4,843 + 872 = 5,715
+Fresh:
+- Diamond: 3,599 / 7,198 / 10,797 / 17,995 / 35,990
+- Platinum: 5,999 / 11,998 / 17,997 / 29,995 / 59,990
+- Enterprise: 8,999 / 17,998 / 26,997 / 44,995 / 89,990
 
+Renewal After 16 Feb:
+- Diamond: 3,599 / 7,198 / 10,797 / 17,995 / 35,990
+- Platinum: 8,000 / 16,000 / 24,000 / 40,000 / 80,000
+- Enterprise: 10,799 / 21,598 / 32,397 / 53,995 / 107,990
+
+Renewal Before 16 Feb:
+- Diamond: 3,599 / 7,198 / 10,797 / 17,995 / 35,990
+- Platinum: 12,000 / 24,000 / 36,000 / 60,000 / 120,000
+- Enterprise: 16,199 / 32,398 / 48,597 / 80,995 / 161,990
+
+**Monthly prices (annual discounted / 12, rounded):**
+
+Fresh: Diamond 217, Platinum 250, Enterprise 417
+Renewal After: Diamond 217, Platinum 333, Enterprise 500
+Renewal Before: Diamond 217, Platinum 500, Enterprise 750
+
+**Monthly MRP (annual MRP / 12, rounded):**
+
+Fresh: Diamond 300, Platinum 500, Enterprise 750
+Renewal After: Diamond 300, Platinum 667, Enterprise 900
+Renewal Before: Diamond 300, Platinum 1,000, Enterprise 1,350
