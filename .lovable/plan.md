@@ -1,44 +1,58 @@
 
-# Pricing Validation Tool for myBillBook
 
-An internal tool for dev/QA teams to quickly validate pricing calculations across all plans, durations, and discount scenarios.
+# Fix Pricing Logic + Checkout UI Overhaul
 
-## Page 1: Plan List Validation
-- Shows all 3 plans (Diamond, Platinum, Enterprise) side by side, matching the current plan list page layout
-- Displays for each plan: monthly price (crossed-out original → discounted), annual price (crossed-out → discounted), and discount badge (28%, 50%, 44%)
-- A checklist-style section where testers can verify:
-  - Monthly prices: ₹217, ₹250, ₹417
-  - Annual prices: ₹2,599, ₹2,999, ₹4,999
-  - Crossed-out prices: ₹300, ₹500, ₹750 (monthly) and ₹3,599, ₹5,999, ₹8,999 (annual)
-  - Discount percentages: 28%, 50%, 44%
-  - Monthly × 12 validation (e.g., ₹217 × 12 = ₹2,604 vs displayed ₹2,599)
+## Problem
+The current `calculateBreakdown` uses `MRP x percentage` which gives non-round numbers (e.g., 28% of 3,599 = 1,007.72 -> rounds to 1,008, giving 2,591 instead of 2,599). The backend actually uses fixed discounted prices, and the "percentage" shown on UI (28%, 50%, 44%) is just a rounded display value.
 
-## Page 2: Plan Detail / Checkout Price Calculator
-- **Selectors at the top** (like the spreadsheet):
-  - Select Plan: Diamond / Platinum / Enterprise
-  - Select Duration: 1 Year, 2 Years (5% extra off), 3 Years (10%), 5 Years (15%), 10 Years (30%)
-  - Select Coupon Discount: 0%, 5%, 10%, 15%, 30% (or custom %)
-  - Toggle: New User / Renewal User
-- **Price breakdown display** (matching the checkout page layout):
-  - Original Price (from MRP table, e.g., Platinum 1yr = ₹5,999; 2yr = ₹11,998)
-  - Plan Discount (28% / 50% / 44% depending on plan)
-  - Multi-Year Extra Off (5% / 10% / 15% / 30% based on duration)
-  - Coupon Discount (based on selected coupon %)
-  - Total Discount (sum of all, shown as percentage and amount)
-  - Price After Discount
-  - GST (18%)
-  - Total Price
-- All calculations are done client-side using hardcoded pricing data
+Actual backend percentages:
+- Diamond: (3599 - 2599) / 3599 = 27.79%
+- Platinum: (5999 - 2999) / 5999 = 50.01%
+- Enterprise: (8999 - 4999) / 8999 = 44.45%
 
-## Hardcoded Data
-- **MRP (Ex GST) table**: Diamond (3,599 / 7,198 / 10,797 / 17,995 / 35,990), Platinum (5,999 / 11,998 / 17,997 / 29,995 / 59,990), Enterprise (8,999 / 17,998 / 26,997 / 44,995 / 89,990)
-- **Plan discounts**: Diamond 28%, Platinum 50%, Enterprise 44%
-- **Multi-year discounts**: 1yr = 0%, 2yr = 5%, 3yr = 10%, 5yr = 15%, 10yr = 30%
-- **GST**: 18%
-- For renewal users: same structure with different base prices (placeholder until you share the renewal pricing data)
+## Changes
 
-## UX
-- Clean, simple interface — no login needed
-- Navigation between Plan List page and Detail Calculator
-- Results update instantly as selections change
-- Clear formatting with ₹ currency, comma separators
+### 1. Fix `calculateBreakdown` in `src/lib/pricing-data.ts`
+- Instead of `originalPrice * planDiscountPercent / 100`, compute plan discount as:
+  - `priceAfterPlanDiscount = annualDiscounted * years` (e.g., Platinum 2yr = 2999 * 2 = 5998)
+  - `planDiscountAmount = originalPrice - priceAfterPlanDiscount`
+- Add `DURATION_YEARS` constant: `{ "1yr": 1, "2yr": 2, "3yr": 3, "5yr": 5, "10yr": 10 }`
+- Store actual discount percentages (27.79, 50.01, 44.45) for display in the breakdown, but keep the rounded ones (28, 50, 44) for the UI badge display
+- Add `ANNUAL_DISCOUNTED` lookup by plan and userType so the function can derive the correct post-discount price
+- Multi-year and coupon discounts continue to apply sequentially on the post-plan-discount price (unchanged logic)
+
+### 2. Redesign Checkout UI in `src/pages/CheckoutCalculator.tsx`
+- **Two-column layout**: Left column has all selectors, right column has a sticky "Price Details" card
+- **Price Details card** matching the production screenshots:
+  - "Original Price" row with the MRP value
+  - **Collapsible "Total Discount (X%)"** row in green with a chevron, expandable to show:
+    - `{percent}% Discount` (plan discount amount, showing the actual % like 27.79%)
+    - `Multi Year Extra Off` (amount, if applicable)
+    - `Coupon Discount ({percent}%)` (amount, if applicable)
+  - "Price After Discount" (bold)
+  - "GST (18%)" row
+  - Dashed separator
+  - **"Total Price"** large and bold
+- Selectors stay visible alongside the price card so testers don't scroll
+
+### 3. Add New/Renewal toggle to Plan List page
+- Add a toggle at the top of `src/pages/PlanListValidation.tsx` for New/Renewal user type
+- When renewal data arrives, the plan cards and checklist will reflect renewal pricing
+
+## Technical Details
+
+**Files to modify:**
+- `src/lib/pricing-data.ts` -- fix `calculateBreakdown`, add `DURATION_YEARS`, add `ANNUAL_DISCOUNTED` map
+- `src/pages/CheckoutCalculator.tsx` -- two-column layout, collapsible discount breakdown, production-matching UI
+- `src/pages/PlanListValidation.tsx` -- add user type toggle
+
+**Calculation example (Platinum, 2yr, 15% coupon, new user):**
+1. MRP = 11,998
+2. Plan discount: 11,998 - (2,999 x 2) = 11,998 - 5,998 = 6,000
+3. After plan discount: 5,998
+4. Multi-year 5%: 5,998 x 5% = 300 -> After: 5,698
+5. Coupon 15%: 5,698 x 15% = 855 -> After: 4,843
+6. Total discount: 11,998 - 4,843 = 7,155
+7. GST 18%: 4,843 x 18% = 872
+8. Total: 4,843 + 872 = 5,715
+
