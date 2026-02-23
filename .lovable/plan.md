@@ -1,40 +1,77 @@
 
-# UI Improvements for Upgrade Credit Section
 
-## Three Changes
+# QA Checklist Page
 
-### 1. Make PPD Breakdown Collapsible
-The PPD breakdown (lines 197-237) takes up a lot of vertical space. Convert it into a collapsible section using the existing Collapsible component. It will be collapsed by default, with just the "Credit Calculation (PPD Breakdown)" header as the trigger. Users can expand it when they need to verify the math.
+## What We're Building
+A new `/qa-checklist` page that serves as a comprehensive testing reference for the pricing and checkout changes described in the PRD. QA can open this page and see exactly what to verify, with direct links to the relevant pages in the tool (plan list / checkout) pre-configured with the right parameters.
 
-### 2. Add "as of today" Clarification to Remaining Days
-Change "Remaining Days" label to include today's date for clarity:
-- From: `Remaining Days` -> `485`
-- To: `Remaining Days (as of 24 Feb 2026)` -> `485`
+## Page Structure
 
-This makes it clear that the remaining days calculation is based on the current date.
+### Section 1: Multi-Year Discount Verification
+A table showing each tenure (1, 2, 3, 5, 10 years) with the expected discount percentages. QA compares these against what they see on staging.
 
-### 3. Show New Plan End Date
-Add the new plan's end date below the "Plan Duration" selector in the Customise Plan card. This shows when the new upgraded plan will expire (calculated as today + selected duration in years * 365 days).
+| Tenure | Expected Discount |
+|--------|------------------|
+| 1 year | 0% |
+| 2 years | 5% |
+| 3 years | 10% |
+| 5 years | 15% |
+| 10 years | 30% |
 
-Display it as a small info line like:
-`New plan ends: 23 Feb 2029` (for a 3-year plan selected today)
+### Section 2: Label Price (MRP) and Discount % Validation
+For each of the 4 user types (Fresh, Renewal After, Renewal Before, Upgrade), show a table of all 4 plans with:
+- Expected MRP (struck-through price)
+- Expected discount %
+- Expected final annual price
 
-This appears for upgrade users only, right below the duration selector row.
+Values pulled directly from `pricing-data.ts` so it's always in sync with the code. Each scenario has a "Open in Plan List" link that navigates to `/?userType=...`.
+
+### Section 3: Checkout Price Breakdown Scenarios
+Pre-built test scenarios with "Open in Checkout" links:
+- Fresh + Platinum + 1yr (baseline)
+- Fresh + Diamond + 3yr (multi-year discount)
+- Renewal After + Platinum + 2yr
+- Renewal Before + Enterprise + 5yr
+- Upgrade: Diamond to Platinum, 1yr
+- Upgrade: Silver to Diamond, 3yr
+
+Each scenario shows the expected values (original price, discount %, price after discount, GST, total) computed from the existing `calculateBreakdown` function -- so QA can compare against staging.
+
+### Section 4: Upgrade Credit (PPD) Verification
+Test cases for upgrade credit calculation:
+- Diamond 1yr started recently -- expected PPD and credit
+- Diamond 2yr (5% multi-year discount) -- verify PPD is lower
+- Platinum 3yr (10% discount) -- verify credit calculation
+
+Each shows the expected PPD breakdown inline.
+
+### Section 5: Platform Filter Checks
+- Android: all 4 plans visible
+- Web: Silver hidden, only 3 plans visible
+- Switching from Android to Web while Silver is selected auto-switches to Diamond
+
+### Section 6: Coupon/Discount Rules
+- Fresh users: coupon section enabled
+- Renewal users: coupon section disabled with message
+- Upgrade users: coupon section disabled with message
+
+### Section 7: Edge Cases
+- Negative total price (credit > price after discount)
+- Expired plan (remaining days = 0, credit = 0)
+- Same-day start (maximum remaining days)
+- GST computed on post-credit amount
 
 ## Technical Details
 
-### `src/pages/CheckoutCalculator.tsx`
+### New file: `src/pages/QAChecklist.tsx`
+- Import pricing data functions and constants from `pricing-data.ts`
+- Compute expected values dynamically using the same functions the checkout uses (`calculateBreakdown`, `calculateUpgradeCredit`)
+- Each test scenario rendered as a card with expected values and a link to open that scenario in the plan list or checkout page
+- Uses existing UI components (Card, Table, Badge, Button)
 
-**Collapsible PPD Breakdown:**
-- Import is already available (Collapsible, CollapsibleContent, CollapsibleTrigger)
-- Add a `ppdOpen` state (default: `false`)
-- Wrap the PPD detail rows (lines 201-236) in a Collapsible, keeping the header as the trigger
-- The "Plan ends" and "Credit" summary line (lines 188-195) stays always visible
+### `src/App.tsx`
+- Add route: `<Route path="/qa" element={<QAChecklist />} />`
 
-**Remaining Days label:**
-- Change line 225 from `Remaining Days` to `Remaining Days (as of {format(new Date(), "dd MMM yyyy")})`
+### Navigation
+- Add a small "QA Checklist" link in the header of the Plan List page so it's easily discoverable
 
-**New plan end date:**
-- Calculate: `newPlanEndDate = addDays(new Date(), DURATION_YEARS[duration] * 365)`
-- Show below the duration selector row (after line 279) only when `isUpgrade` is true
-- Small text: `New plan ends: {format(newPlanEndDate, "dd MMM yyyy")}`
