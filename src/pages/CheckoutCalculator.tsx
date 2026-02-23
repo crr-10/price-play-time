@@ -22,6 +22,7 @@ import {
   calculateBreakdown,
   calculateUpgradeCredit,
   formatINR,
+  formatINR2,
 } from "@/lib/pricing-data";
 
 const USER_TYPES: UserType[] = ["fresh", "renewal_after", "renewal_before", "upgrade"];
@@ -59,9 +60,10 @@ const CheckoutCalculator = () => {
     : coupon;
 
   // Calculate upgrade credit
-  const upgradeCredit = isUpgrade
+  const upgradeCreditResult = isUpgrade
     ? calculateUpgradeCredit(currentPlan, currentDuration, new Date(startDate))
-    : 0;
+    : null;
+  const upgradeCredit = upgradeCreditResult?.credit ?? 0;
 
   // Auto-switch plan if not available on current platform
   const allPlans = PLANS_BY_TYPE[userType];
@@ -191,6 +193,49 @@ const CheckoutCalculator = () => {
                       Credit: <strong className="text-emerald-700">{formatINR(upgradeCredit)}</strong>
                     </span>
                   </div>
+
+                  {/* PPD Breakdown */}
+                  {upgradeCreditResult && (
+                    <div className="mt-3 border-t border-amber-200 pt-3 space-y-1.5 text-xs text-muted-foreground">
+                      <p className="font-semibold text-amber-800 text-xs mb-2">Credit Calculation (PPD Breakdown)</p>
+                      <div className="flex justify-between">
+                        <span>Annual Discounted Price</span>
+                        <span>{formatINR(upgradeCreditResult.annualDiscounted)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>× {upgradeCreditResult.years} year{upgradeCreditResult.years > 1 ? "s" : ""}</span>
+                        <span>{formatINR(upgradeCreditResult.subtotal)}</span>
+                      </div>
+                      {upgradeCreditResult.multiYearDiscountPercent > 0 && (
+                        <div className="flex justify-between text-emerald-700">
+                          <span>Multi-year discount ({upgradeCreditResult.multiYearDiscountPercent}%)</span>
+                          <span>- {formatINR(Math.round(upgradeCreditResult.subtotal * upgradeCreditResult.multiYearDiscountPercent / 100))}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-medium text-foreground">
+                        <span>Total Paid (ex-GST)</span>
+                        <span>{formatINR2(upgradeCreditResult.totalPaid)}</span>
+                      </div>
+                      <div className="border-t border-dashed border-amber-200 my-1" />
+                      <div className="flex justify-between">
+                        <span>Total Days</span>
+                        <span>{upgradeCreditResult.totalDays}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Remaining Days</span>
+                        <span>{upgradeCreditResult.remainingDays}</span>
+                      </div>
+                      <div className="flex justify-between font-medium text-foreground">
+                        <span>PPD (Total Paid ÷ Total Days)</span>
+                        <span>{formatINR2(upgradeCreditResult.ppd)}</span>
+                      </div>
+                      <div className="border-t border-dashed border-amber-200 my-1" />
+                      <div className="flex justify-between font-semibold text-emerald-700">
+                        <span>Credit (PPD × Remaining Days)</span>
+                        <span>{formatINR(upgradeCreditResult.credit)}</span>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
