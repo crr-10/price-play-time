@@ -4,11 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { PLANS, formatINR } from "@/lib/pricing-data";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { PLANS, formatINR, type UserType } from "@/lib/pricing-data";
 import { ArrowRight, CheckCircle2, XCircle } from "lucide-react";
 
 const PlanListValidation = () => {
   const [checks, setChecks] = useState<Record<string, boolean>>({});
+  const [userType, setUserType] = useState<UserType>("new");
 
   const toggle = (key: string) =>
     setChecks((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -67,7 +70,7 @@ const PlanListValidation = () => {
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
               Plan List Validation
@@ -81,6 +84,17 @@ const PlanListValidation = () => {
               Checkout Calculator <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
+        </div>
+
+        {/* User Type Toggle */}
+        <div className="mb-8 flex items-center gap-3">
+          <Label>User Type:</Label>
+          <span className={`text-sm ${userType === "new" ? "font-semibold" : "text-muted-foreground"}`}>New</span>
+          <Switch
+            checked={userType === "renewal"}
+            onCheckedChange={(checked) => setUserType(checked ? "renewal" : "new")}
+          />
+          <span className={`text-sm ${userType === "renewal" ? "font-semibold" : "text-muted-foreground"}`}>Renewal</span>
         </div>
 
         {/* Plan Cards */}

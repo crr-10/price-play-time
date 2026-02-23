@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { ArrowLeft } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ArrowLeft, ChevronDown } from "lucide-react";
 import {
   type PlanName,
   type Duration,
@@ -27,6 +26,7 @@ const CheckoutCalculator = () => {
   const [customCoupon, setCustomCoupon] = useState<string>("");
   const [useCustomCoupon, setUseCustomCoupon] = useState(false);
   const [userType, setUserType] = useState<UserType>("new");
+  const [discountOpen, setDiscountOpen] = useState(false);
 
   const effectiveCoupon = useCustomCoupon
     ? Math.min(100, Math.max(0, Number(customCoupon) || 0))
@@ -34,12 +34,9 @@ const CheckoutCalculator = () => {
 
   const b = calculateBreakdown(plan, duration, effectiveCoupon, userType);
 
-  const planLabel = PLANS.find((p) => p.key === plan)?.name ?? "";
-  const durationInfo = DURATIONS.find((d) => d.key === duration);
-
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-5xl">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
@@ -57,184 +54,189 @@ const CheckoutCalculator = () => {
           </Link>
         </div>
 
-        {/* Selectors */}
-        <Card className="mb-6">
-          <CardContent className="pt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Plan */}
-            <div className="space-y-2">
-              <Label>Plan</Label>
-              <Select value={plan} onValueChange={(v) => setPlan(v as PlanName)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PLANS.map((p) => (
-                    <SelectItem key={p.key} value={p.key}>
-                      {p.name} ({p.discountPercent}% off)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Duration */}
-            <div className="space-y-2">
-              <Label>Duration</Label>
-              <Select value={duration} onValueChange={(v) => setDuration(v as Duration)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {DURATIONS.map((d) => (
-                    <SelectItem key={d.key} value={d.key}>
-                      {d.label} {d.extraOff && `(${d.extraOff})`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Coupon */}
-            <div className="space-y-2">
-              <Label>Coupon Discount</Label>
-              {useCustomCoupon ? (
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    placeholder="e.g. 12"
-                    value={customCoupon}
-                    onChange={(e) => setCustomCoupon(e.target.value)}
-                    className="w-24"
-                    min={0}
-                    max={100}
-                  />
-                  <span className="self-center text-sm text-muted-foreground">%</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => { setUseCustomCoupon(false); setCustomCoupon(""); }}
-                  >
-                    Presets
-                  </Button>
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left: Selectors */}
+          <div className="space-y-4">
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                {/* Plan */}
+                <div className="space-y-2">
+                  <Label>Plan</Label>
+                  <Select value={plan} onValueChange={(v) => setPlan(v as PlanName)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {PLANS.map((p) => (
+                        <SelectItem key={p.key} value={p.key}>
+                          {p.name} ({p.discountPercent}% off)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              ) : (
-                <div className="flex gap-2 flex-wrap">
-                  {COUPON_OPTIONS.map((c) => (
-                    <Button
-                      key={c}
-                      variant={coupon === c ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCoupon(c)}
-                    >
-                      {c}%
-                    </Button>
-                  ))}
-                  <Button variant="ghost" size="sm" onClick={() => setUseCustomCoupon(true)}>
-                    Custom
-                  </Button>
+
+                {/* Duration */}
+                <div className="space-y-2">
+                  <Label>Duration</Label>
+                  <Select value={duration} onValueChange={(v) => setDuration(v as Duration)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {DURATIONS.map((d) => (
+                        <SelectItem key={d.key} value={d.key}>
+                          {d.label} {d.extraOff && `(${d.extraOff})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
-            </div>
 
-            {/* User Type */}
-            <div className="space-y-2">
-              <Label>User Type</Label>
-              <div className="flex items-center gap-3 pt-1">
-                <span className={`text-sm ${userType === "new" ? "font-semibold" : "text-muted-foreground"}`}>
-                  New
-                </span>
-                <Switch
-                  checked={userType === "renewal"}
-                  onCheckedChange={(checked) => setUserType(checked ? "renewal" : "new")}
-                />
-                <span className={`text-sm ${userType === "renewal" ? "font-semibold" : "text-muted-foreground"}`}>
-                  Renewal
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                {/* Coupon */}
+                <div className="space-y-2">
+                  <Label>Coupon Discount</Label>
+                  {useCustomCoupon ? (
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder="e.g. 12"
+                        value={customCoupon}
+                        onChange={(e) => setCustomCoupon(e.target.value)}
+                        className="w-24"
+                        min={0}
+                        max={100}
+                      />
+                      <span className="self-center text-sm text-muted-foreground">%</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setUseCustomCoupon(false); setCustomCoupon(""); }}
+                      >
+                        Presets
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 flex-wrap">
+                      {COUPON_OPTIONS.map((c) => (
+                        <Button
+                          key={c}
+                          variant={coupon === c ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCoupon(c)}
+                        >
+                          {c}%
+                        </Button>
+                      ))}
+                      <Button variant="ghost" size="sm" onClick={() => setUseCustomCoupon(true)}>
+                        Custom
+                      </Button>
+                    </div>
+                  )}
+                </div>
 
-        {/* Price Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-3">
-              Price Breakdown
-              <Badge variant="outline">{planLabel}</Badge>
-              <Badge variant="outline">{durationInfo?.label}</Badge>
-              <Badge variant="secondary">{userType === "new" ? "New User" : "Renewal"}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 text-sm">
-              <Row label="Original Price (MRP ex-GST)" value={formatINR(b.originalPrice)} />
-              <Row
-                label={`Plan Discount (${b.planDiscountPercent}%)`}
-                value={`- ${formatINR(b.planDiscountAmount)}`}
-                sub
-              />
-              <Row label="After Plan Discount" value={formatINR(b.priceAfterPlanDiscount)} bold />
+                {/* User Type */}
+                <div className="space-y-2">
+                  <Label>User Type</Label>
+                  <div className="flex items-center gap-3 pt-1">
+                    <span className={`text-sm ${userType === "new" ? "font-semibold" : "text-muted-foreground"}`}>
+                      New
+                    </span>
+                    <Switch
+                      checked={userType === "renewal"}
+                      onCheckedChange={(checked) => setUserType(checked ? "renewal" : "new")}
+                    />
+                    <span className={`text-sm ${userType === "renewal" ? "font-semibold" : "text-muted-foreground"}`}>
+                      Renewal
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-              {b.multiYearDiscountPercent > 0 && (
-                <>
-                  <Row
-                    label={`Multi-Year Extra Off (${b.multiYearDiscountPercent}%)`}
-                    value={`- ${formatINR(b.multiYearDiscountAmount)}`}
-                    sub
-                  />
-                  <Row label="After Multi-Year Discount" value={formatINR(b.priceAfterMultiYear)} bold />
-                </>
-              )}
-
-              {b.couponDiscountPercent > 0 && (
-                <>
-                  <Row
-                    label={`Coupon Discount (${b.couponDiscountPercent}%)`}
-                    value={`- ${formatINR(b.couponDiscountAmount)}`}
-                    sub
-                  />
-                  <Row label="After Coupon" value={formatINR(b.priceAfterCoupon)} bold />
-                </>
-              )}
-
-              <Separator />
-
-              <Row
-                label={`Total Discount (${b.totalDiscountPercent}%)`}
-                value={`- ${formatINR(b.totalDiscountAmount)}`}
-                highlight
-              />
-              <Row label="Price After All Discounts" value={formatINR(b.priceAfterCoupon)} bold />
-              <Row label={`GST (${18}%)`} value={`+ ${formatINR(b.gstAmount)}`} sub />
-
-              <Separator />
-
-              <div className="flex justify-between items-center pt-1">
-                <span className="text-base font-bold">Total Price (incl. GST)</span>
-                <span className="text-xl font-bold text-primary">{formatINR(b.totalPrice)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Right: Price Details (sticky) */}
+          <div className="lg:sticky lg:top-8 lg:self-start">
+            <PriceDetailsCard breakdown={b} discountOpen={discountOpen} setDiscountOpen={setDiscountOpen} />
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
-function Row({
-  label,
-  value,
-  bold,
-  sub,
-  highlight,
+function PriceDetailsCard({
+  breakdown: b,
+  discountOpen,
+  setDiscountOpen,
 }: {
-  label: string;
-  value: string;
-  bold?: boolean;
-  sub?: boolean;
-  highlight?: boolean;
+  breakdown: ReturnType<typeof calculateBreakdown>;
+  discountOpen: boolean;
+  setDiscountOpen: (open: boolean) => void;
 }) {
   return (
-    <div className={`flex justify-between ${sub ? "pl-4 text-muted-foreground" : ""} ${bold ? "font-semibold" : ""} ${highlight ? "text-emerald-600 font-medium" : ""}`}>
-      <span>{label}</span>
-      <span>{value}</span>
-    </div>
+    <Card>
+      <CardContent className="pt-6">
+        <h3 className="font-semibold text-base mb-4">Price Details</h3>
+
+        <div className="space-y-3 text-sm">
+          {/* Original Price */}
+          <div className="flex justify-between">
+            <span>Original Price</span>
+            <span>{formatINR(b.originalPrice)}</span>
+          </div>
+
+          {/* Total Discount - Collapsible */}
+          <Collapsible open={discountOpen} onOpenChange={setDiscountOpen}>
+            <CollapsibleTrigger className="flex justify-between w-full text-emerald-600">
+              <span className="flex items-center gap-1">
+                Total Discount ({b.totalDiscountPercent}%)
+                <ChevronDown className={`h-4 w-4 transition-transform ${discountOpen ? "rotate-180" : ""}`} />
+              </span>
+              <span>- {formatINR(b.totalDiscountAmount)}</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="pl-4 pt-2 space-y-2 text-muted-foreground">
+                <div className="flex justify-between">
+                  <span>{b.actualPlanDiscountPercent}% Discount</span>
+                  <span>- {formatINR(b.planDiscountAmount)}</span>
+                </div>
+                {b.multiYearDiscountPercent > 0 && (
+                  <div className="flex justify-between">
+                    <span>Multi Year Extra Off</span>
+                    <span>- {formatINR(b.multiYearDiscountAmount)}</span>
+                  </div>
+                )}
+                {b.couponDiscountPercent > 0 && (
+                  <div className="flex justify-between">
+                    <span>Coupon Discount ({b.couponDiscountPercent}%)</span>
+                    <span>- {formatINR(b.couponDiscountAmount)}</span>
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Price After Discount */}
+          <div className="flex justify-between font-semibold">
+            <span>Price After Discount</span>
+            <span>{formatINR(b.priceAfterCoupon)}</span>
+          </div>
+
+          {/* GST */}
+          <div className="flex justify-between text-muted-foreground">
+            <span>GST (18%)</span>
+            <span>+ {formatINR(b.gstAmount)}</span>
+          </div>
+
+          {/* Dashed separator */}
+          <div className="border-t border-dashed border-border" />
+
+          {/* Total Price */}
+          <div className="flex justify-between items-center pt-1">
+            <span className="text-base font-bold">Total Price</span>
+            <span className="text-xl font-bold text-primary">{formatINR(b.totalPrice)}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
