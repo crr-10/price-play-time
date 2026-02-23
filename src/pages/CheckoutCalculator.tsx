@@ -24,7 +24,8 @@ const USER_TYPES: UserType[] = ["fresh", "renewal_after", "renewal_before"];
 const CheckoutCalculator = () => {
   const [searchParams] = useSearchParams();
   const initialPlan = (searchParams.get("plan") as PlanName) || "platinum";
-  const initialUserType = (searchParams.get("userType") as UserType) || "fresh";
+  const rawUserType = searchParams.get("userType");
+  const initialUserType: UserType = rawUserType === "renewal_after" || rawUserType === "renewal_before" || rawUserType === "fresh" ? rawUserType : "fresh";
 
   const [plan, setPlan] = useState<PlanName>(initialPlan);
   const [duration, setDuration] = useState<Duration>("1yr");
