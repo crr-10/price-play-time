@@ -2,7 +2,7 @@
 
 export type PlanName = "diamond" | "platinum" | "enterprise";
 export type Duration = "1yr" | "2yr" | "3yr" | "5yr" | "10yr";
-export type UserType = "fresh" | "renewal_after" | "renewal_before";
+export type UserType = "fresh" | "renewal_after" | "renewal_before" | "upgrade";
 
 export interface PlanInfo {
   name: string;
@@ -21,7 +21,7 @@ const PLAN_META: { name: string; key: PlanName; discountPercent: number; actualD
   { name: "Enterprise", key: "enterprise", discountPercent: 44, actualDiscountPercent: 44.45 },
 ];
 
-const ANNUAL_PRICES: Record<UserType, Record<PlanName, { mrp: number; discounted: number }>> = {
+const ANNUAL_PRICES: Record<string, Record<PlanName, { mrp: number; discounted: number }>> = {
   fresh: {
     diamond: { mrp: 3599, discounted: 2599 },
     platinum: { mrp: 5999, discounted: 2999 },
@@ -38,6 +38,8 @@ const ANNUAL_PRICES: Record<UserType, Record<PlanName, { mrp: number; discounted
     enterprise: { mrp: 16199, discounted: 8999 },
   },
 };
+// Upgrade uses same pricing as renewal_after
+ANNUAL_PRICES.upgrade = ANNUAL_PRICES.renewal_after;
 
 function buildPlans(userType: UserType): PlanInfo[] {
   return PLAN_META.map((meta) => {
@@ -56,6 +58,7 @@ export const PLANS_BY_TYPE: Record<UserType, PlanInfo[]> = {
   fresh: buildPlans("fresh"),
   renewal_after: buildPlans("renewal_after"),
   renewal_before: buildPlans("renewal_before"),
+  upgrade: buildPlans("upgrade"),
 };
 
 // Default PLANS kept for backward compat — use PLANS_BY_TYPE in UI
@@ -80,6 +83,7 @@ export const MRP_TABLES: Record<UserType, Record<PlanName, Record<Duration, numb
   fresh: buildMrpTable("fresh"),
   renewal_after: buildMrpTable("renewal_after"),
   renewal_before: buildMrpTable("renewal_before"),
+  upgrade: buildMrpTable("upgrade"),
 };
 
 // Keep old exports for compat
@@ -90,6 +94,7 @@ export const ANNUAL_DISCOUNTED: Record<UserType, Record<PlanName, number>> = {
   fresh: { diamond: 2599, platinum: 2999, enterprise: 4999 },
   renewal_after: { diamond: 2599, platinum: 3999, enterprise: 5999 },
   renewal_before: { diamond: 2599, platinum: 5999, enterprise: 8999 },
+  upgrade: { diamond: 2599, platinum: 3999, enterprise: 5999 },
 };
 
 export const DURATION_YEARS: Record<Duration, number> = {
@@ -127,6 +132,25 @@ export function formatINR2(amount: number): string {
   return "₹" + amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// --- Upgrade Credit Calculation ---
+
+export function calculateUpgradeCredit(
+  currentPlan: PlanName,
+  currentDuration: Duration,
+  startDate: Date
+): number {
+  const years = DURATION_YEARS[currentDuration];
+  const totalDays = years * 365;
+  const planEndDate = new Date(startDate);
+  planEndDate.setDate(planEndDate.getDate() + totalDays);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const remainingDays = Math.max(0, Math.ceil((planEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+  const annualDiscounted = ANNUAL_DISCOUNTED.fresh[currentPlan];
+  const credit = Math.round(annualDiscounted * years * remainingDays / totalDays);
+  return credit;
+}
+
 export interface PriceBreakdown {
   originalPrice: number;
   planDiscountPercent: number;
@@ -141,6 +165,7 @@ export interface PriceBreakdown {
   priceAfterCoupon: number;
   totalDiscountAmount: number;
   totalDiscountPercent: number;
+  upgradeCredit: number;
   gstAmount: number;
   totalPrice: number;
 }
@@ -149,7 +174,8 @@ export function calculateBreakdown(
   plan: PlanName,
   duration: Duration,
   couponPercent: number,
-  userType: UserType
+  userType: UserType,
+  upgradeCredit: number = 0
 ): PriceBreakdown {
   const originalPrice = MRP_TABLES[userType][plan][duration];
   const years = DURATION_YEARS[duration];
@@ -169,19 +195,20 @@ export function calculateBreakdown(
   const priceAfterCoupon = priceAfterMultiYear - couponDiscountAmount;
 
   const totalDiscountAmount = originalPrice - priceAfterCoupon;
-  // Sequential/compounding discount: 1 - (1-d1)*(1-d2)*(1-d3)
   const compoundedDiscount = 1 - (1 - actualPlanDiscountPercent / 100) * (1 - multiYearDiscountPercent / 100) * (1 - couponDiscountPercent / 100);
   const totalDiscountPercent = Math.round(compoundedDiscount * 100);
 
-  const gstAmount = Math.round(priceAfterCoupon * GST_RATE / 100);
-  const totalPrice = priceAfterCoupon + gstAmount;
+  const priceAfterCredit = Math.max(0, priceAfterCoupon - upgradeCredit);
+  const gstAmount = Math.round(priceAfterCredit * GST_RATE / 100);
+  const totalPrice = priceAfterCredit + gstAmount;
 
   return {
     originalPrice, planDiscountPercent, actualPlanDiscountPercent,
     planDiscountAmount, priceAfterPlanDiscount,
     multiYearDiscountPercent, multiYearDiscountAmount, priceAfterMultiYear,
     couponDiscountPercent, couponDiscountAmount, priceAfterCoupon,
-    totalDiscountAmount, totalDiscountPercent, gstAmount, totalPrice,
+    totalDiscountAmount, totalDiscountPercent,
+    upgradeCredit, gstAmount, totalPrice,
   };
 }
 
@@ -189,4 +216,5 @@ export const USER_TYPE_LABELS: Record<UserType, string> = {
   fresh: "Fresh Plan Purchase",
   renewal_after: "Renewal (after 16 Feb 2024)",
   renewal_before: "Renewal (before 16 Feb 2024)",
+  upgrade: "Upgrade (existing user)",
 };
