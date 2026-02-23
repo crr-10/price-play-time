@@ -141,11 +141,12 @@ export function calculateUpgradeCredit(
 ): number {
   const years = DURATION_YEARS[currentDuration];
   const totalDays = years * 365;
-  const planEndDate = new Date(startDate);
+  const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  const planEndDate = new Date(start);
   planEndDate.setDate(planEndDate.getDate() + totalDays);
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const remainingDays = Math.max(0, Math.ceil((planEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+  const todayNorm = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const remainingDays = Math.max(0, Math.round((planEndDate.getTime() - todayNorm.getTime()) / (1000 * 60 * 60 * 24)));
   const annualDiscounted = ANNUAL_DISCOUNTED.fresh[currentPlan];
   const credit = Math.round(annualDiscounted * years * remainingDays / totalDays);
   return credit;
