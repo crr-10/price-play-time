@@ -169,7 +169,9 @@ export function calculateBreakdown(
   const priceAfterCoupon = priceAfterMultiYear - couponDiscountAmount;
 
   const totalDiscountAmount = originalPrice - priceAfterCoupon;
-  const totalDiscountPercent = originalPrice > 0 ? Math.round((totalDiscountAmount / originalPrice) * 100) : 0;
+  // Sequential/compounding discount: 1 - (1-d1)*(1-d2)*(1-d3)
+  const compoundedDiscount = 1 - (1 - actualPlanDiscountPercent / 100) * (1 - multiYearDiscountPercent / 100) * (1 - couponDiscountPercent / 100);
+  const totalDiscountPercent = Math.round(compoundedDiscount * 100);
 
   const gstAmount = Math.round(priceAfterCoupon * GST_RATE / 100);
   const totalPrice = priceAfterCoupon + gstAmount;
