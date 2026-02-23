@@ -1,94 +1,53 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { PLANS, formatINR, type UserType } from "@/lib/pricing-data";
-import { ArrowRight, CheckCircle2, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { PLANS, formatINR, type UserType, type PlanName } from "@/lib/pricing-data";
+import { Crown } from "lucide-react";
+
+const PLAN_BORDERS: Record<PlanName, string> = {
+  diamond: "border-t-4 border-t-orange-400",
+  platinum: "border-t-4 border-t-indigo-600",
+  enterprise: "border-t-4 border-t-emerald-500",
+};
+
+const PLAN_BUTTON_STYLES: Record<PlanName, string> = {
+  diamond: "border-orange-400 text-orange-500 hover:bg-orange-50",
+  platinum: "border-indigo-600 text-indigo-600 hover:bg-indigo-50",
+  enterprise: "border-emerald-500 text-emerald-600 hover:bg-emerald-50",
+};
+
+const PLAN_DESCRIPTIONS: Record<PlanName, string> = {
+  diamond: "Essential plan for small business owners",
+  platinum: "More users, more flexibility, and a Desktop app",
+  enterprise: "Fully customizable for bigger businesses",
+};
 
 const PlanListValidation = () => {
-  const [checks, setChecks] = useState<Record<string, boolean>>({});
   const [userType, setUserType] = useState<UserType>("new");
+  const navigate = useNavigate();
 
-  const toggle = (key: string) =>
-    setChecks((prev) => ({ ...prev, [key]: !prev[key] }));
-
-  const validationItems = [
-    {
-      group: "Monthly Discounted Prices",
-      items: PLANS.map((p) => ({
-        key: `monthly_${p.key}`,
-        label: `${p.name}: ${formatINR(p.monthlyDiscounted)}/mo`,
-      })),
-    },
-    {
-      group: "Annual Discounted Prices",
-      items: PLANS.map((p) => ({
-        key: `annual_${p.key}`,
-        label: `${p.name}: ${formatINR(p.annualDiscounted)}/yr`,
-      })),
-    },
-    {
-      group: "Crossed-out Monthly MRP",
-      items: PLANS.map((p) => ({
-        key: `mrp_monthly_${p.key}`,
-        label: `${p.name}: ${formatINR(p.monthlyMRP)}/mo`,
-      })),
-    },
-    {
-      group: "Crossed-out Annual MRP",
-      items: PLANS.map((p) => ({
-        key: `mrp_annual_${p.key}`,
-        label: `${p.name}: ${formatINR(p.annualMRP)}/yr`,
-      })),
-    },
-    {
-      group: "Discount Badges",
-      items: PLANS.map((p) => ({
-        key: `badge_${p.key}`,
-        label: `${p.name}: ${p.discountPercent}% off`,
-      })),
-    },
-    {
-      group: "Monthly × 12 vs Annual",
-      items: PLANS.map((p) => {
-        const calc = p.monthlyDiscounted * 12;
-        const match = calc === p.annualDiscounted;
-        return {
-          key: `m12_${p.key}`,
-          label: `${p.name}: ${formatINR(p.monthlyDiscounted)} × 12 = ${formatINR(calc)} vs ${formatINR(p.annualDiscounted)}`,
-          match,
-        };
-      }),
-    },
-  ];
+  const goToCheckout = (planKey: PlanName) => {
+    navigate(`/calculator?plan=${planKey}&userType=${userType}`);
+  };
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="mx-auto max-w-6xl">
+    <div className="min-h-screen bg-muted/30 p-4 md:p-8">
+      <div className="mx-auto max-w-5xl">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Plan List Validation
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Verify pricing displayed on the plan list page
-            </p>
-          </div>
-          <Link to="/calculator">
-            <Button variant="outline" className="gap-2">
-              Checkout Calculator <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-bold tracking-tight">Choose Your Plan</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Pricing validation tool — verify plan list prices
+          </p>
         </div>
 
         {/* User Type Toggle */}
-        <div className="mb-8 flex items-center gap-3">
-          <Label>User Type:</Label>
+        <div className="mb-8 flex items-center justify-center gap-3">
+          <Label className="text-sm font-medium">User Type:</Label>
           <span className={`text-sm ${userType === "new" ? "font-semibold" : "text-muted-foreground"}`}>New</span>
           <Switch
             checked={userType === "renewal"}
@@ -98,86 +57,72 @@ const PlanListValidation = () => {
         </div>
 
         {/* Plan Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {PLANS.map((plan) => (
-            <Card key={plan.key} className="relative overflow-hidden">
-              <div className="absolute top-3 right-3">
-                <Badge className="bg-emerald-500/90 text-white border-0">
-                  {plan.discountPercent}% OFF
-                </Badge>
-              </div>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">{plan.name}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <Card
+              key={plan.key}
+              className={`relative overflow-visible rounded-xl shadow-sm ${PLAN_BORDERS[plan.key]}`}
+            >
+              {/* Most Popular badge for Platinum */}
+              {plan.key === "platinum" && (
+                <div className="absolute -top-3 right-4">
+                  <Badge className="bg-indigo-900 text-white border-0 gap-1 px-3 py-1 text-xs">
+                    <Crown className="h-3 w-3" /> Most Popular
+                  </Badge>
+                </div>
+              )}
+
+              <CardContent className="pt-6 pb-6 space-y-4">
+                {/* Plan Name */}
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Monthly</p>
+                  <h2 className="text-xl font-bold">{plan.name} Plan</h2>
+                  <p className="text-sm text-emerald-600 mt-0.5">{PLAN_DESCRIPTIONS[plan.key]}</p>
+                </div>
+
+                {/* Monthly Price */}
+                <div className="pt-2">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-muted-foreground line-through text-sm">
+                    <span className="text-muted-foreground line-through text-base">
                       {formatINR(plan.monthlyMRP)}
                     </span>
-                    <span className="text-xl font-bold">
-                      {formatINR(plan.monthlyDiscounted)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">/mo</span>
+                    <span className="text-3xl font-bold">{formatINR(plan.monthlyDiscounted)}</span>
+                    <span className="text-sm text-muted-foreground">/month</span>
                   </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Annual</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-muted-foreground line-through text-sm">
-                      {formatINR(plan.annualMRP)}
-                    </span>
-                    <span className="text-xl font-bold">
-                      {formatINR(plan.annualDiscounted)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">/yr</span>
-                  </div>
+
+                {/* Annual Price + Badge */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-muted-foreground">Billed Annually</span>
+                  <span className="text-sm text-muted-foreground line-through">
+                    {formatINR(plan.annualMRP)}
+                  </span>
+                  <span className="text-sm font-semibold">
+                    {formatINR(plan.annualDiscounted)}/year
+                  </span>
+                  <Badge variant="outline" className="border-emerald-500 text-emerald-600 text-xs px-2 py-0">
+                    {plan.discountPercent}% Off
+                  </Badge>
                 </div>
+
+                {/* Buy Button */}
+                <Button
+                  variant="outline"
+                  className={`w-full mt-2 font-semibold ${PLAN_BUTTON_STYLES[plan.key]}`}
+                  onClick={() => goToCheckout(plan.key)}
+                >
+                  Buy {plan.name} Plan
+                </Button>
+
+                {/* Sales CTA for Platinum & Enterprise */}
+                {(plan.key === "platinum" || plan.key === "enterprise") && (
+                  <p className="text-xs text-emerald-600 text-center flex items-center justify-center gap-1">
+                    <span>✓</span> Up to 65% off - Talk to Sales
+                  </p>
+                )}
               </CardContent>
             </Card>
           ))}
         </div>
-
-        {/* Validation Checklist */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Validation Checklist</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {validationItems.map((group) => (
-              <div key={group.group}>
-                <h3 className="font-medium text-sm text-muted-foreground mb-2">
-                  {group.group}
-                </h3>
-                <div className="space-y-2">
-                  {group.items.map((item) => {
-                    const hasMatch = "match" in item;
-                    return (
-                      <label
-                        key={item.key}
-                        className="flex items-center gap-3 cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={!!checks[item.key]}
-                          onCheckedChange={() => toggle(item.key)}
-                        />
-                        <span className="text-sm">{item.label}</span>
-                        {hasMatch && (
-                          (item as any).match ? (
-                            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-destructive" />
-                          )
-                        )}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
