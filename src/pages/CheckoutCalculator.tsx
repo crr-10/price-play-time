@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,11 +12,13 @@ import {
   type PlanName,
   type Duration,
   type UserType,
+  type Platform,
   PLANS_BY_TYPE,
   DURATIONS,
   DURATION_YEARS,
   COUPON_OPTIONS,
   USER_TYPE_LABELS,
+  PLAN_PLATFORM,
   calculateBreakdown,
   calculateUpgradeCredit,
   formatINR,
@@ -37,6 +39,7 @@ const CheckoutCalculator = () => {
   const [useCustomCoupon, setUseCustomCoupon] = useState(false);
   const [userType, setUserType] = useState<UserType>(initialUserType);
   const [discountOpen, setDiscountOpen] = useState(false);
+  const [platform, setPlatform] = useState<Platform>("android");
 
   // Upgrade-specific state
   const [currentPlan, setCurrentPlan] = useState<PlanName>(
@@ -60,9 +63,18 @@ const CheckoutCalculator = () => {
     ? calculateUpgradeCredit(currentPlan, currentDuration, new Date(startDate))
     : 0;
 
+  // Auto-switch plan if not available on current platform
+  const allPlans = PLANS_BY_TYPE[userType];
+  const platformPlans = allPlans.filter((p) => PLAN_PLATFORM[p.key].includes(platform));
+  
+  useEffect(() => {
+    if (!PLAN_PLATFORM[plan].includes(platform) && platformPlans.length > 0) {
+      setPlan(platformPlans[0].key);
+    }
+  }, [platform, plan]);
+
   const b = calculateBreakdown(plan, duration, effectiveCoupon, userType, upgradeCredit);
-  const plans = PLANS_BY_TYPE[userType];
-  const selectedPlan = plans.find((p) => p.key === plan)!;
+  const selectedPlan = platformPlans.find((p) => p.key === plan) || platformPlans[0];
 
   const planEndDate = isUpgrade
     ? addDays(new Date(startDate), DURATION_YEARS[currentDuration] * 365)
@@ -86,19 +98,32 @@ const CheckoutCalculator = () => {
               <p className="text-xs text-muted-foreground">Pricing validation tool</p>
             </div>
           </div>
-          {/* User Type Selector */}
-          <div className="flex items-center gap-2">
-            <Label className="text-xs">User:</Label>
-            <Select value={userType} onValueChange={(v) => setUserType(v as UserType)}>
-              <SelectTrigger className="w-56 text-xs h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {USER_TYPES.map((ut) => (
-                  <SelectItem key={ut} value={ut} className="text-xs">{USER_TYPE_LABELS[ut]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs">Platform:</Label>
+              <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
+                <SelectTrigger className="w-28 text-xs h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="android" className="text-xs">Android</SelectItem>
+                  <SelectItem value="web" className="text-xs">Web</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs">User:</Label>
+              <Select value={userType} onValueChange={(v) => setUserType(v as UserType)}>
+                <SelectTrigger className="w-56 text-xs h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {USER_TYPES.map((ut) => (
+                    <SelectItem key={ut} value={ut} className="text-xs">{USER_TYPE_LABELS[ut]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           {userType !== "fresh" && userType !== "upgrade" && (
             <p className="text-xs text-muted-foreground">
@@ -175,12 +200,12 @@ const CheckoutCalculator = () => {
               <CardContent className="py-4 flex items-center gap-3">
                 <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
                 <span className="font-semibold">{isUpgrade ? "Upgrading to" : "Selected Plan"}</span>
-                <Select value={plan} onValueChange={(v) => setPlan(v as PlanName)}>
+                  <Select value={plan} onValueChange={(v) => setPlan(v as PlanName)}>
                   <SelectTrigger className="w-auto border-0 bg-transparent font-semibold text-indigo-600 gap-1 px-2">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {plans.map((p) => (
+                    {platformPlans.map((p) => (
                       <SelectItem key={p.key} value={p.key}>{p.name} Plan</SelectItem>
                     ))}
                   </SelectContent>

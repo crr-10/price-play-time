@@ -1,6 +1,14 @@
 // All prices are Ex-GST in INR
 
 export type PlanName = "silver" | "diamond" | "platinum" | "enterprise";
+export type Platform = "android" | "web";
+
+export const PLAN_PLATFORM: Record<PlanName, Platform[]> = {
+  silver: ["android"],
+  diamond: ["android", "web"],
+  platinum: ["android", "web"],
+  enterprise: ["android", "web"],
+};
 export type Duration = "1yr" | "2yr" | "3yr" | "5yr" | "10yr";
 export type UserType = "fresh" | "renewal_after" | "renewal_before" | "upgrade";
 
