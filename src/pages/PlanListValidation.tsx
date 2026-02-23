@@ -60,8 +60,16 @@ const PlanListValidation = () => {
                 <SelectItem key={ut} value={ut}>{USER_TYPE_LABELS[ut]}</SelectItem>
               ))}
             </SelectContent>
-          </Select>
+        </Select>
         </div>
+
+        {userType !== "fresh" && (
+          <p className="text-xs text-muted-foreground text-center -mt-4 mb-2">
+            {userType === "renewal_after"
+              ? "First plan was purchased after 16 Feb 2024"
+              : "First plan was purchased before 16 Feb 2024"}
+          </p>
+        )}
 
         {/* Plan Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
