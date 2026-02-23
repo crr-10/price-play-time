@@ -196,7 +196,7 @@ const CheckoutCalculator = () => {
                   <Collapsible open={discountOpen} onOpenChange={setDiscountOpen}>
                     <CollapsibleTrigger className="flex justify-between w-full text-emerald-600">
                       <span className="flex items-center gap-1">
-                        Total Discount ({b.planDiscountPercent}%)
+                        Total Discount ({b.totalDiscountPercent}%)
                         {discountOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                       </span>
                       <span className="font-medium">- {formatINR(b.totalDiscountAmount)}</span>
