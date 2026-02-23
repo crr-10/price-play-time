@@ -11,24 +11,27 @@ import { Crown, AlertCircle } from "lucide-react";
 import { format, addDays } from "date-fns";
 
 const PLAN_BORDERS: Record<PlanName, string> = {
+  silver: "border-t-4 border-t-amber-400",
   diamond: "border-t-4 border-t-orange-400",
   platinum: "border-t-4 border-t-indigo-600",
   enterprise: "border-t-4 border-t-emerald-500",
 };
 
 const PLAN_BUTTON_STYLES: Record<PlanName, string> = {
+  silver: "border-amber-400 text-amber-500 hover:bg-amber-50",
   diamond: "border-orange-400 text-orange-500 hover:bg-orange-50",
   platinum: "border-indigo-600 text-indigo-600 hover:bg-indigo-50",
   enterprise: "border-emerald-500 text-emerald-600 hover:bg-emerald-50",
 };
 
 const PLAN_DESCRIPTIONS: Record<PlanName, string> = {
+  silver: "Starter plan for individuals (Android only)",
   diamond: "Essential plan for small business owners",
   platinum: "More users, more flexibility, and a Desktop app",
   enterprise: "Fully customizable for bigger businesses",
 };
 
-const PLAN_ORDER: PlanName[] = ["diamond", "platinum", "enterprise"];
+const PLAN_ORDER: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
 
 const USER_TYPES: UserType[] = ["fresh", "renewal_after", "renewal_before", "upgrade"];
 
@@ -112,6 +115,7 @@ const PlanListValidation = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="silver">Silver</SelectItem>
                       <SelectItem value="diamond">Diamond</SelectItem>
                       <SelectItem value="platinum">Platinum</SelectItem>
                     </SelectContent>

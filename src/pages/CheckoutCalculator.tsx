@@ -129,6 +129,7 @@ const CheckoutCalculator = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="silver">Silver</SelectItem>
                           <SelectItem value="diamond">Diamond</SelectItem>
                           <SelectItem value="platinum">Platinum</SelectItem>
                         </SelectContent>

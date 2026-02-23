@@ -1,6 +1,6 @@
 // All prices are Ex-GST in INR
 
-export type PlanName = "diamond" | "platinum" | "enterprise";
+export type PlanName = "silver" | "diamond" | "platinum" | "enterprise";
 export type Duration = "1yr" | "2yr" | "3yr" | "5yr" | "10yr";
 export type UserType = "fresh" | "renewal_after" | "renewal_before" | "upgrade";
 
@@ -16,6 +16,7 @@ export interface PlanInfo {
 }
 
 const PLAN_META: { name: string; key: PlanName; discountPercent: number; actualDiscountPercent: number }[] = [
+  { name: "Silver", key: "silver", discountPercent: 27, actualDiscountPercent: 27.32 },
   { name: "Diamond", key: "diamond", discountPercent: 28, actualDiscountPercent: 27.79 },
   { name: "Platinum", key: "platinum", discountPercent: 50, actualDiscountPercent: 50.01 },
   { name: "Enterprise", key: "enterprise", discountPercent: 44, actualDiscountPercent: 44.45 },
@@ -23,16 +24,19 @@ const PLAN_META: { name: string; key: PlanName; discountPercent: number; actualD
 
 const ANNUAL_PRICES: Record<string, Record<PlanName, { mrp: number; discounted: number }>> = {
   fresh: {
+    silver: { mrp: 549, discounted: 399 },
     diamond: { mrp: 3599, discounted: 2599 },
     platinum: { mrp: 5999, discounted: 2999 },
     enterprise: { mrp: 8999, discounted: 4999 },
   },
   renewal_after: {
+    silver: { mrp: 549, discounted: 399 },
     diamond: { mrp: 3599, discounted: 2599 },
     platinum: { mrp: 8000, discounted: 3999 },
     enterprise: { mrp: 10799, discounted: 5999 },
   },
   renewal_before: {
+    silver: { mrp: 549, discounted: 399 },
     diamond: { mrp: 3599, discounted: 2599 },
     platinum: { mrp: 12000, discounted: 5999 },
     enterprise: { mrp: 16199, discounted: 8999 },
@@ -69,7 +73,7 @@ function buildMrpTable(userType: UserType): Record<PlanName, Record<Duration, nu
   const durations: Duration[] = ["1yr", "2yr", "3yr", "5yr", "10yr"];
   const years = [1, 2, 3, 5, 10];
   const result = {} as Record<PlanName, Record<Duration, number>>;
-  for (const plan of ["diamond", "platinum", "enterprise"] as PlanName[]) {
+  for (const plan of ["silver", "diamond", "platinum", "enterprise"] as PlanName[]) {
     result[plan] = {} as Record<Duration, number>;
     const annualMrp = ANNUAL_PRICES[userType][plan].mrp;
     durations.forEach((d, i) => {
@@ -91,10 +95,10 @@ export const MRP_TABLE = MRP_TABLES.fresh;
 export const MRP_TABLE_RENEWAL = MRP_TABLES.renewal_after;
 
 export const ANNUAL_DISCOUNTED: Record<UserType, Record<PlanName, number>> = {
-  fresh: { diamond: 2599, platinum: 2999, enterprise: 4999 },
-  renewal_after: { diamond: 2599, platinum: 3999, enterprise: 5999 },
-  renewal_before: { diamond: 2599, platinum: 5999, enterprise: 8999 },
-  upgrade: { diamond: 2599, platinum: 3999, enterprise: 5999 },
+  fresh: { silver: 399, diamond: 2599, platinum: 2999, enterprise: 4999 },
+  renewal_after: { silver: 399, diamond: 2599, platinum: 3999, enterprise: 5999 },
+  renewal_before: { silver: 399, diamond: 2599, platinum: 5999, enterprise: 8999 },
+  upgrade: { silver: 399, diamond: 2599, platinum: 3999, enterprise: 5999 },
 };
 
 export const DURATION_YEARS: Record<Duration, number> = {
@@ -102,11 +106,11 @@ export const DURATION_YEARS: Record<Duration, number> = {
 };
 
 export const PLAN_DISCOUNTS: Record<PlanName, number> = {
-  diamond: 28, platinum: 50, enterprise: 44,
+  silver: 27, diamond: 28, platinum: 50, enterprise: 44,
 };
 
 export const ACTUAL_PLAN_DISCOUNTS: Record<PlanName, number> = {
-  diamond: 27.79, platinum: 50.01, enterprise: 44.45,
+  silver: 27.32, diamond: 27.79, platinum: 50.01, enterprise: 44.45,
 };
 
 export const MULTI_YEAR_DISCOUNTS: Record<Duration, number> = {
