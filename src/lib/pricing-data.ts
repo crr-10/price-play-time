@@ -146,11 +146,23 @@ export function formatINR2(amount: number): string {
 
 // --- Upgrade Credit Calculation ---
 
+export interface UpgradeCreditResult {
+  credit: number;
+  totalPaid: number;
+  ppd: number;
+  remainingDays: number;
+  totalDays: number;
+  multiYearDiscountPercent: number;
+  annualDiscounted: number;
+  years: number;
+  subtotal: number;
+}
+
 export function calculateUpgradeCredit(
   currentPlan: PlanName,
   currentDuration: Duration,
   startDate: Date
-): number {
+): UpgradeCreditResult {
   const years = DURATION_YEARS[currentDuration];
   const totalDays = years * 365;
   const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
@@ -160,8 +172,12 @@ export function calculateUpgradeCredit(
   const todayNorm = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const remainingDays = Math.max(0, Math.round((planEndDate.getTime() - todayNorm.getTime()) / (1000 * 60 * 60 * 24)));
   const annualDiscounted = ANNUAL_DISCOUNTED.fresh[currentPlan];
-  const credit = Math.round(annualDiscounted * years * remainingDays / totalDays);
-  return credit;
+  const subtotal = annualDiscounted * years;
+  const multiYearDiscountPercent = MULTI_YEAR_DISCOUNTS[currentDuration];
+  const totalPaid = Math.round(subtotal * (1 - multiYearDiscountPercent / 100) * 100) / 100;
+  const ppd = totalPaid / totalDays;
+  const credit = Math.round(ppd * remainingDays);
+  return { credit, totalPaid, ppd, remainingDays, totalDays, multiYearDiscountPercent, annualDiscounted, years, subtotal };
 }
 
 export interface PriceBreakdown {
