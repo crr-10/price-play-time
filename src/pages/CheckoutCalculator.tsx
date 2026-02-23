@@ -102,7 +102,7 @@ const CheckoutCalculator = () => {
                     <SelectContent>
                       {DURATIONS.map((d) => (
                         <SelectItem key={d.key} value={d.key}>
-                          {d.label}
+                          {d.label} {d.extraOff && `(${d.extraOff})`}
                         </SelectItem>
                       ))}
                     </SelectContent>
