@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,17 +11,20 @@ import {
   type PlanName,
   type Duration,
   type UserType,
-  PLANS,
+  PLANS_BY_TYPE,
   DURATIONS,
   COUPON_OPTIONS,
+  USER_TYPE_LABELS,
   calculateBreakdown,
   formatINR,
 } from "@/lib/pricing-data";
 
+const USER_TYPES: UserType[] = ["fresh", "renewal_after", "renewal_before"];
+
 const CheckoutCalculator = () => {
   const [searchParams] = useSearchParams();
   const initialPlan = (searchParams.get("plan") as PlanName) || "platinum";
-  const initialUserType = (searchParams.get("userType") as UserType) || "new";
+  const initialUserType = (searchParams.get("userType") as UserType) || "fresh";
 
   const [plan, setPlan] = useState<PlanName>(initialPlan);
   const [duration, setDuration] = useState<Duration>("1yr");
@@ -37,7 +39,8 @@ const CheckoutCalculator = () => {
     : coupon;
 
   const b = calculateBreakdown(plan, duration, effectiveCoupon, userType);
-  const selectedPlan = PLANS.find((p) => p.key === plan)!;
+  const plans = PLANS_BY_TYPE[userType];
+  const selectedPlan = plans.find((p) => p.key === plan)!;
 
   return (
     <div className="min-h-screen bg-muted/30 p-4 md:p-8">
@@ -55,15 +58,19 @@ const CheckoutCalculator = () => {
               <p className="text-xs text-muted-foreground">Pricing validation tool</p>
             </div>
           </div>
-          {/* User Type Toggle */}
+          {/* User Type Selector */}
           <div className="flex items-center gap-2">
             <Label className="text-xs">User:</Label>
-            <span className={`text-xs ${userType === "new" ? "font-semibold" : "text-muted-foreground"}`}>New</span>
-            <Switch
-              checked={userType === "renewal"}
-              onCheckedChange={(checked) => setUserType(checked ? "renewal" : "new")}
-            />
-            <span className={`text-xs ${userType === "renewal" ? "font-semibold" : "text-muted-foreground"}`}>Renewal</span>
+            <Select value={userType} onValueChange={(v) => setUserType(v as UserType)}>
+              <SelectTrigger className="w-56 text-xs h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {USER_TYPES.map((ut) => (
+                  <SelectItem key={ut} value={ut} className="text-xs">{USER_TYPE_LABELS[ut]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -81,7 +88,7 @@ const CheckoutCalculator = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {PLANS.map((p) => (
+                    {plans.map((p) => (
                       <SelectItem key={p.key} value={p.key}>{p.name} Plan</SelectItem>
                     ))}
                   </SelectContent>
@@ -173,13 +180,11 @@ const CheckoutCalculator = () => {
                 <h3 className="font-bold text-lg mb-5">Price Details</h3>
 
                 <div className="space-y-3 text-sm">
-                  {/* Original Price */}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Original Price</span>
                     <span className="font-medium">{formatINR(b.originalPrice)}</span>
                   </div>
 
-                  {/* Total Discount - Collapsible */}
                   <Collapsible open={discountOpen} onOpenChange={setDiscountOpen}>
                     <CollapsibleTrigger className="flex justify-between w-full text-emerald-600">
                       <span className="flex items-center gap-1">
@@ -210,22 +215,18 @@ const CheckoutCalculator = () => {
                     </CollapsibleContent>
                   </Collapsible>
 
-                  {/* Price After Discount */}
                   <div className="flex justify-between font-semibold">
                     <span>Price After Discount</span>
                     <span>{formatINR(b.priceAfterCoupon)}</span>
                   </div>
 
-                  {/* GST */}
                   <div className="flex justify-between text-muted-foreground">
                     <span>GST (18%)</span>
                     <span>{formatINR(b.gstAmount)}</span>
                   </div>
 
-                  {/* Separator */}
                   <div className="border-t border-dashed border-border" />
 
-                  {/* Total Price */}
                   <div className="flex justify-between items-center pt-1">
                     <span className="text-base font-bold">Total Price</span>
                     <span className="text-xl font-bold text-primary">{formatINR(b.totalPrice)}</span>
