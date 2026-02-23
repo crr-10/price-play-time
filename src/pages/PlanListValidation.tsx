@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { PLANS, formatINR, type UserType, type PlanName } from "@/lib/pricing-data";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PLANS_BY_TYPE, USER_TYPE_LABELS, formatINR, type UserType, type PlanName } from "@/lib/pricing-data";
 import { Crown } from "lucide-react";
 
 const PLAN_BORDERS: Record<PlanName, string> = {
@@ -26,9 +26,12 @@ const PLAN_DESCRIPTIONS: Record<PlanName, string> = {
   enterprise: "Fully customizable for bigger businesses",
 };
 
+const USER_TYPES: UserType[] = ["fresh", "renewal_after", "renewal_before"];
+
 const PlanListValidation = () => {
-  const [userType, setUserType] = useState<UserType>("new");
+  const [userType, setUserType] = useState<UserType>("fresh");
   const navigate = useNavigate();
+  const plans = PLANS_BY_TYPE[userType];
 
   const goToCheckout = (planKey: PlanName) => {
     navigate(`/calculator?plan=${planKey}&userType=${userType}`);
@@ -45,25 +48,28 @@ const PlanListValidation = () => {
           </p>
         </div>
 
-        {/* User Type Toggle */}
+        {/* User Type Selector */}
         <div className="mb-8 flex items-center justify-center gap-3">
           <Label className="text-sm font-medium">User Type:</Label>
-          <span className={`text-sm ${userType === "new" ? "font-semibold" : "text-muted-foreground"}`}>New</span>
-          <Switch
-            checked={userType === "renewal"}
-            onCheckedChange={(checked) => setUserType(checked ? "renewal" : "new")}
-          />
-          <span className={`text-sm ${userType === "renewal" ? "font-semibold" : "text-muted-foreground"}`}>Renewal</span>
+          <Select value={userType} onValueChange={(v) => setUserType(v as UserType)}>
+            <SelectTrigger className="w-64">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {USER_TYPES.map((ut) => (
+                <SelectItem key={ut} value={ut}>{USER_TYPE_LABELS[ut]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Plan Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {PLANS.map((plan) => (
+          {plans.map((plan) => (
             <Card
               key={plan.key}
               className={`relative overflow-visible rounded-xl shadow-sm ${PLAN_BORDERS[plan.key]}`}
             >
-              {/* Most Popular badge for Platinum */}
               {plan.key === "platinum" && (
                 <div className="absolute -top-3 right-4">
                   <Badge className="bg-indigo-900 text-white border-0 gap-1 px-3 py-1 text-xs">
@@ -73,13 +79,11 @@ const PlanListValidation = () => {
               )}
 
               <CardContent className="pt-6 pb-6 space-y-4">
-                {/* Plan Name */}
                 <div>
                   <h2 className="text-xl font-bold">{plan.name} Plan</h2>
                   <p className="text-sm text-emerald-600 mt-0.5">{PLAN_DESCRIPTIONS[plan.key]}</p>
                 </div>
 
-                {/* Monthly Price */}
                 <div className="pt-2">
                   <div className="flex items-baseline gap-2">
                     <span className="text-muted-foreground line-through text-base">
@@ -90,7 +94,6 @@ const PlanListValidation = () => {
                   </div>
                 </div>
 
-                {/* Annual Price + Badge */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm text-muted-foreground">Billed Annually</span>
                   <span className="text-sm text-muted-foreground line-through">
@@ -104,7 +107,6 @@ const PlanListValidation = () => {
                   </Badge>
                 </div>
 
-                {/* Buy Button */}
                 <Button
                   variant="outline"
                   className={`w-full mt-2 font-semibold ${PLAN_BUTTON_STYLES[plan.key]}`}
@@ -113,7 +115,6 @@ const PlanListValidation = () => {
                   Buy {plan.name} Plan
                 </Button>
 
-                {/* Sales CTA for Platinum & Enterprise */}
                 {(plan.key === "platinum" || plan.key === "enterprise") && (
                   <p className="text-xs text-emerald-600 text-center flex items-center justify-center gap-1">
                     <span>✓</span> Up to 65% off - Talk to Sales
