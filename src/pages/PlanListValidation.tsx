@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { PLANS_BY_TYPE, USER_TYPE_LABELS, DURATIONS, DURATION_YEARS, calculateUpgradeCredit, formatINR, type UserType, type PlanName, type Duration } from "@/lib/pricing-data";
+import { PLANS_BY_TYPE, USER_TYPE_LABELS, DURATIONS, DURATION_YEARS, calculateUpgradeCredit, formatINR, PLAN_PLATFORM, type UserType, type PlanName, type Duration, type Platform } from "@/lib/pricing-data";
 import { Crown, AlertCircle } from "lucide-react";
 import { format, addDays } from "date-fns";
 
@@ -37,6 +37,7 @@ const USER_TYPES: UserType[] = ["fresh", "renewal_after", "renewal_before", "upg
 
 const PlanListValidation = () => {
   const [userType, setUserType] = useState<UserType>("fresh");
+  const [platform, setPlatform] = useState<Platform>("android");
   const [currentPlan, setCurrentPlan] = useState<PlanName>("diamond");
   const [currentDuration, setCurrentDuration] = useState<Duration>("1yr");
   const [startDate, setStartDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
@@ -45,10 +46,11 @@ const PlanListValidation = () => {
   const isUpgrade = userType === "upgrade";
   const plans = PLANS_BY_TYPE[userType];
 
-  // For upgrade, only show plans higher than current plan
+  // Filter by platform, then by upgrade logic
+  const platformPlans = plans.filter((p) => PLAN_PLATFORM[p.key].includes(platform));
   const visiblePlans = isUpgrade
-    ? plans.filter((p) => PLAN_ORDER.indexOf(p.key) > PLAN_ORDER.indexOf(currentPlan))
-    : plans;
+    ? platformPlans.filter((p) => PLAN_ORDER.indexOf(p.key) > PLAN_ORDER.indexOf(currentPlan))
+    : platformPlans;
 
   const currentPlanInfo = isUpgrade ? plans.find((p) => p.key === currentPlan) : null;
 
@@ -67,7 +69,7 @@ const PlanListValidation = () => {
 
   return (
     <div className="min-h-screen bg-muted/30 p-4 md:p-8">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold tracking-tight">Choose Your Plan</h1>
@@ -76,19 +78,33 @@ const PlanListValidation = () => {
           </p>
         </div>
 
-        {/* User Type Selector */}
-        <div className="mb-8 flex items-center justify-center gap-3">
-          <Label className="text-sm font-medium">User Type:</Label>
-          <Select value={userType} onValueChange={(v) => setUserType(v as UserType)}>
-            <SelectTrigger className="w-64">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {USER_TYPES.map((ut) => (
-                <SelectItem key={ut} value={ut}>{USER_TYPE_LABELS[ut]}</SelectItem>
-              ))}
-            </SelectContent>
-        </Select>
+        {/* Selectors */}
+        <div className="mb-8 flex items-center justify-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium">Platform:</Label>
+            <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
+              <SelectTrigger className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="android">Android</SelectItem>
+                <SelectItem value="web">Web</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium">User Type:</Label>
+            <Select value={userType} onValueChange={(v) => setUserType(v as UserType)}>
+              <SelectTrigger className="w-64">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {USER_TYPES.map((ut) => (
+                  <SelectItem key={ut} value={ut}>{USER_TYPE_LABELS[ut]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {userType !== "fresh" && userType !== "upgrade" && (
@@ -154,7 +170,12 @@ const PlanListValidation = () => {
         )}
 
         {/* Plan Cards */}
-        <div className={`grid grid-cols-1 gap-6 ${visiblePlans.length === 3 ? "md:grid-cols-3" : visiblePlans.length === 2 ? "md:grid-cols-2 max-w-3xl mx-auto" : "max-w-md mx-auto"}`}>
+        <div className={`grid grid-cols-1 gap-6 ${
+          visiblePlans.length + (isUpgrade && currentPlanInfo ? 1 : 0) >= 4 ? "md:grid-cols-4" :
+          visiblePlans.length + (isUpgrade && currentPlanInfo ? 1 : 0) === 3 ? "md:grid-cols-3" :
+          visiblePlans.length + (isUpgrade && currentPlanInfo ? 1 : 0) === 2 ? "md:grid-cols-2 max-w-3xl mx-auto" :
+          "max-w-md mx-auto"
+        }`}>
           {/* Show current plan card for upgrade */}
           {isUpgrade && currentPlanInfo && (
             <Card className={`relative overflow-visible rounded-xl shadow-sm opacity-75 ${PLAN_BORDERS[currentPlan]}`}>
