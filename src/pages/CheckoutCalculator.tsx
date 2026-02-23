@@ -246,8 +246,11 @@ const CheckoutCalculator = () => {
                 )}
 
                 {/* Coupon */}
-                <div className="border-t border-dashed pt-4 space-y-2">
+                <div className={`border-t border-dashed pt-4 space-y-2 ${isUpgrade || userType === "renewal_after" || userType === "renewal_before" ? "opacity-50 pointer-events-none" : ""}`}>
                   <span className="text-sm font-medium">Coupon / Discount %</span>
+                  {(isUpgrade || userType === "renewal_after" || userType === "renewal_before") && (
+                    <p className="text-xs text-muted-foreground">Not applicable for {isUpgrade ? "upgrade" : "renewal"} users</p>
+                  )}
                   {useCustomCoupon ? (
                     <div className="flex gap-2 items-center">
                       <Input
