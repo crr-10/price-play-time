@@ -11,7 +11,8 @@ export interface PlanInfo {
   monthlyDiscounted: number;
   annualMRP: number;
   annualDiscounted: number;
-  discountPercent: number;
+  discountPercent: number; // Rounded display value (28, 50, 44)
+  actualDiscountPercent: number; // Backend value (27.79, 50.01, 44.45)
 }
 
 export const PLANS: PlanInfo[] = [
@@ -23,6 +24,7 @@ export const PLANS: PlanInfo[] = [
     annualMRP: 3599,
     annualDiscounted: 2599,
     discountPercent: 28,
+    actualDiscountPercent: 27.79,
   },
   {
     name: "Platinum",
@@ -32,6 +34,7 @@ export const PLANS: PlanInfo[] = [
     annualMRP: 5999,
     annualDiscounted: 2999,
     discountPercent: 50,
+    actualDiscountPercent: 50.01,
   },
   {
     name: "Enterprise",
@@ -41,6 +44,7 @@ export const PLANS: PlanInfo[] = [
     annualMRP: 8999,
     annualDiscounted: 4999,
     discountPercent: 44,
+    actualDiscountPercent: 44.45,
   },
 ];
 
@@ -58,10 +62,39 @@ export const MRP_TABLE_RENEWAL: Record<PlanName, Record<Duration, number>> = {
   enterprise: { "1yr": 8999, "2yr": 17998, "3yr": 26997, "5yr": 44995, "10yr": 89990 },
 };
 
+// Annual discounted prices per plan (used to compute plan discount as fixed price)
+export const ANNUAL_DISCOUNTED: Record<UserType, Record<PlanName, number>> = {
+  new: {
+    diamond: 2599,
+    platinum: 2999,
+    enterprise: 4999,
+  },
+  renewal: {
+    // Placeholder — same as new until renewal data arrives
+    diamond: 2599,
+    platinum: 2999,
+    enterprise: 4999,
+  },
+};
+
+export const DURATION_YEARS: Record<Duration, number> = {
+  "1yr": 1,
+  "2yr": 2,
+  "3yr": 3,
+  "5yr": 5,
+  "10yr": 10,
+};
+
 export const PLAN_DISCOUNTS: Record<PlanName, number> = {
   diamond: 28,
   platinum: 50,
   enterprise: 44,
+};
+
+export const ACTUAL_PLAN_DISCOUNTS: Record<PlanName, number> = {
+  diamond: 27.79,
+  platinum: 50.01,
+  enterprise: 44.45,
 };
 
 export const MULTI_YEAR_DISCOUNTS: Record<Duration, number> = {
@@ -94,7 +127,8 @@ export function formatINR2(amount: number): string {
 
 export interface PriceBreakdown {
   originalPrice: number;
-  planDiscountPercent: number;
+  planDiscountPercent: number; // Rounded for badge display
+  actualPlanDiscountPercent: number; // Actual backend percent for breakdown
   planDiscountAmount: number;
   priceAfterPlanDiscount: number;
   multiYearDiscountPercent: number;
@@ -117,14 +151,22 @@ export function calculateBreakdown(
 ): PriceBreakdown {
   const table = userType === "new" ? MRP_TABLE : MRP_TABLE_RENEWAL;
   const originalPrice = table[plan][duration];
-  const planDiscountPercent = PLAN_DISCOUNTS[plan];
-  const planDiscountAmount = Math.round(originalPrice * planDiscountPercent / 100);
-  const priceAfterPlanDiscount = originalPrice - planDiscountAmount;
 
+  // Use fixed discounted price × years for round numbers
+  const years = DURATION_YEARS[duration];
+  const annualDiscounted = ANNUAL_DISCOUNTED[userType][plan];
+  const priceAfterPlanDiscount = annualDiscounted * years;
+  const planDiscountAmount = originalPrice - priceAfterPlanDiscount;
+
+  const planDiscountPercent = PLAN_DISCOUNTS[plan];
+  const actualPlanDiscountPercent = ACTUAL_PLAN_DISCOUNTS[plan];
+
+  // Multi-year discount applied sequentially on post-plan-discount price
   const multiYearDiscountPercent = MULTI_YEAR_DISCOUNTS[duration];
   const multiYearDiscountAmount = Math.round(priceAfterPlanDiscount * multiYearDiscountPercent / 100);
   const priceAfterMultiYear = priceAfterPlanDiscount - multiYearDiscountAmount;
 
+  // Coupon discount applied sequentially on post-multi-year price
   const couponDiscountPercent = couponPercent;
   const couponDiscountAmount = Math.round(priceAfterMultiYear * couponDiscountPercent / 100);
   const priceAfterCoupon = priceAfterMultiYear - couponDiscountAmount;
@@ -138,6 +180,7 @@ export function calculateBreakdown(
   return {
     originalPrice,
     planDiscountPercent,
+    actualPlanDiscountPercent,
     planDiscountAmount,
     priceAfterPlanDiscount,
     multiYearDiscountPercent,
