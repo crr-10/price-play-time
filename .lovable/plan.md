@@ -1,59 +1,40 @@
 
+# UI Improvements for Upgrade Credit Section
 
-# Fix Upgrade Credit Calculation & Show PPD Breakdown
+## Three Changes
 
-## Problem
-The current credit calculation ignores the multi-year discount. It computes credit as:
-```text
-credit = annualDiscounted * years * remainingDays / totalDays
-```
+### 1. Make PPD Breakdown Collapsible
+The PPD breakdown (lines 197-237) takes up a lot of vertical space. Convert it into a collapsible section using the existing Collapsible component. It will be collapsed by default, with just the "Credit Calculation (PPD Breakdown)" header as the trigger. Users can expand it when they need to verify the math.
 
-But the user actually paid less due to multi-year discount. For example, Diamond 2-year:
-- Current (wrong): 2599 * 2 = 5198, PPD = 5198/730 = 7.12
-- Correct: 2599 * 2 * (1 - 5/100) = 4938.10, PPD = 4938.10/730 = 6.76
+### 2. Add "as of today" Clarification to Remaining Days
+Change "Remaining Days" label to include today's date for clarity:
+- From: `Remaining Days` -> `485`
+- To: `Remaining Days (as of 24 Feb 2026)` -> `485`
 
-The credit should be based on what the user actually paid (after multi-year discount, but coupons are excluded from credit calculation).
+This makes it clear that the remaining days calculation is based on the current date.
 
-## Changes
+### 3. Show New Plan End Date
+Add the new plan's end date below the "Plan Duration" selector in the Customise Plan card. This shows when the new upgraded plan will expire (calculated as today + selected duration in years * 365 days).
 
-### 1. `src/lib/pricing-data.ts` - Fix `calculateUpgradeCredit`
-- Apply multi-year discount to the total paid amount before computing PPD
-- Formula becomes:
-```text
-totalPaid = annualDiscounted * years * (1 - multiYearDiscount/100)
-PPD = totalPaid / totalDays
-credit = PPD * remainingDays
-```
-- Return additional details (totalPaid, PPD, remainingDays, totalDays) for the UI breakdown
-- Change return type to an object: `{ credit, totalPaid, ppd, remainingDays, totalDays, multiYearDiscountPercent }`
+Display it as a small info line like:
+`New plan ends: 23 Feb 2029` (for a 3-year plan selected today)
 
-### 2. `src/pages/CheckoutCalculator.tsx` - Show PPD Breakdown in Current Plan Details Card
-- Use the new return object from `calculateUpgradeCredit`
-- Below the existing "Credit" line in the Current Plan Details card, add a detailed PPD calculation breakdown showing:
-  - Annual discounted price of current plan
-  - Total before multi-year discount (annual * years)
-  - Multi-year discount applied (if any)
-  - Total paid (after multi-year discount)
-  - Total days in plan
-  - Remaining days
-  - PPD (Plan Price per Day) = totalPaid / totalDays
-  - Credit = PPD * remainingDays
-- This breakdown only appears in the Current Plan Details card (not in the Price Details card on the right)
+This appears for upgrade users only, right below the duration selector row.
 
-### 3. `src/pages/CheckoutCalculator.tsx` - Update references
-- Update the `upgradeCredit` variable to extract `.credit` from the returned object
-- Store the full object for rendering the PPD breakdown
+## Technical Details
 
-## Example Calculation (Diamond, 2yr, started recently)
-```text
-Annual Discounted: 2,599
-Years: 2
-Subtotal: 2,599 x 2 = 5,198
-Multi-year discount: 5%
-Total Paid: 5,198 x 0.95 = 4,938
-Total Days: 730
-PPD: 4,938 / 730 = 6.77
-Remaining Days: 729 (if started yesterday)
-Credit: 6.77 x 729 = 4,935
-```
+### `src/pages/CheckoutCalculator.tsx`
 
+**Collapsible PPD Breakdown:**
+- Import is already available (Collapsible, CollapsibleContent, CollapsibleTrigger)
+- Add a `ppdOpen` state (default: `false`)
+- Wrap the PPD detail rows (lines 201-236) in a Collapsible, keeping the header as the trigger
+- The "Plan ends" and "Credit" summary line (lines 188-195) stays always visible
+
+**Remaining Days label:**
+- Change line 225 from `Remaining Days` to `Remaining Days (as of {format(new Date(), "dd MMM yyyy")})`
+
+**New plan end date:**
+- Calculate: `newPlanEndDate = addDays(new Date(), DURATION_YEARS[duration] * 365)`
+- Show below the duration selector row (after line 279) only when `isUpgrade` is true
+- Small text: `New plan ends: {format(newPlanEndDate, "dd MMM yyyy")}`
