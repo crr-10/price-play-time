@@ -1,59 +1,39 @@
 
 
-# Add Silver Plan Across the Tool
+# Platform Filter and Side-by-Side Plan Cards
 
-## Overview
-Add Silver as a full plan option visible everywhere (not just upgrade "current plan" dropdown). Silver is an Android-only plan with MRP 549 and discounted price 399, same across all user types.
+## What Changes
 
-## Silver Plan Data
-- Annual MRP: 549
-- Annual Discounted: 399
-- Discount: ~27% (actual: 27.32%)
-- Same price across Fresh, Renewal After, Renewal Before, and Upgrade cohorts
-- Supports multi-year discounts like all other plans
+### 1. Add Platform Selector (Android / Web)
+A new "Platform" dropdown next to the existing "User Type" selector. When "Android" is selected, all 4 plans show (Silver, Diamond, Platinum, Enterprise). When "Web" is selected, Silver is hidden since it's Android-only -- only Diamond, Platinum, Enterprise appear.
 
-## Changes
+This filter will be added to both the Plan List page and the Checkout Calculator page.
 
-### 1. `src/lib/pricing-data.ts`
-- Add `"silver"` to the `PlanName` type: `"silver" | "diamond" | "platinum" | "enterprise"`
-- Add Silver to `PLAN_META`: name "Silver", discount ~27%, actual 27.32%
-- Add Silver to all `ANNUAL_PRICES` entries (fresh, renewal_after, renewal_before): `{ mrp: 549, discounted: 399 }`
-- Add Silver to `ANNUAL_DISCOUNTED` for all user types: 399
-- Add Silver to `PLAN_DISCOUNTS`: 27
-- Add Silver to `ACTUAL_PLAN_DISCOUNTS`: 27.32
-- The `buildPlans`, `buildMrpTable`, and all Record types will automatically pick up Silver since they iterate over `PLAN_META` / `ANNUAL_PRICES`
+### 2. Show Plan Cards Side by Side
+Currently, on larger screens, the grid only goes up to 3 columns. With 4 plans, it falls back to single-column stacking. The fix is to always use a 4-column grid on desktop (regardless of plan count), so all plans sit side by side without scrolling.
 
-### 2. `src/pages/PlanListValidation.tsx`
-- Add Silver to `PLAN_BORDERS`: yellow/amber border
-- Add Silver to `PLAN_BUTTON_STYLES`: matching color
-- Add Silver to `PLAN_DESCRIPTIONS`: e.g. "Starter plan for individuals (Android only)"
-- Add Silver to `PLAN_ORDER` array as the first entry (lowest tier)
-- Add Silver as an option in the upgrade "Current Plan" dropdown (can upgrade from Silver)
+For smaller plan counts (e.g., 3 plans on Web, or fewer during upgrade), the grid will still adapt (3-col, 2-col, etc.).
 
-### 3. `src/pages/CheckoutCalculator.tsx`
-- Add Silver as an option in the plan selector dropdown
-- Add Silver as an option in the upgrade "Current Plan" dropdown
+---
 
 ## Technical Details
 
-**Updated type:**
-```text
-PlanName = "silver" | "diamond" | "platinum" | "enterprise"
-```
+### `src/lib/pricing-data.ts`
+- Add a `Platform` type: `"android" | "web"`
+- Add a `PLAN_PLATFORM` map indicating which plans are available on which platform:
+  - Silver: android only
+  - Diamond, Platinum, Enterprise: both
 
-**Silver pricing entry (all user types):**
-```text
-silver: { mrp: 549, discounted: 399 }
-```
+### `src/pages/PlanListValidation.tsx`
+- Add `platform` state (default: `"android"`)
+- Add Platform selector next to User Type selector
+- Filter `visiblePlans` by platform (exclude Silver when platform is "web")
+- Change grid classes to support 4 columns: use `md:grid-cols-4` when 4 plans are visible, `md:grid-cols-3` for 3, etc.
+- Increase `max-w` from `5xl` to `6xl` to give 4 cards enough room
 
-**Discount calculation:**
-```text
-(549 - 399) / 549 = 27.32%
-Displayed as: 27%
-```
-
-**Plan order for upgrade filtering:**
-Silver < Diamond < Platinum < Enterprise
-
-Silver will appear in plan cards, checkout calculator, and as a valid "current plan" for upgrade scenarios. Multi-year discounts (5%, 10%, 15%, 30%) apply the same way as other plans.
+### `src/pages/CheckoutCalculator.tsx`
+- Add `platform` state
+- Add Platform selector in the header area
+- Filter the plan dropdown options by platform (hide Silver when "web" selected)
+- If current selected plan is Silver and user switches to Web, auto-switch to Diamond
 
