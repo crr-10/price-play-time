@@ -1,3 +1,4 @@
+import React from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,9 @@ import {
   PLANS_BY_TYPE, DURATIONS, DURATION_YEARS, MULTI_YEAR_DISCOUNTS,
   PLAN_DISCOUNTS, ACTUAL_PLAN_DISCOUNTS, MRP_TABLES,
   ANNUAL_DISCOUNTED, USER_TYPE_LABELS,
+  ENTERPRISE_BASE, ENTERPRISE_EXTRA_BUSINESS_COST, ENTERPRISE_USER_SLAB_COSTS,
+  ENTERPRISE_MAX_BUSINESSES, ENTERPRISE_MAX_USERS,
+  getEnterpriseAddon, getEnterpriseMRP,
   calculateBreakdown, calculateUpgradeCredit, formatINR, formatINR2,
 } from "@/lib/pricing-data";
 
@@ -268,6 +272,7 @@ const QAChecklist = () => {
                 ["mrp", "MRP & Discount %"],
                 ["checkout", "Checkout Scenarios"],
                 ["ppd", "PPD Verification"],
+                ["enterprise", "Enterprise Config"],
                 ["platform", "Platform Filters"],
                 ["coupon", "Coupon Rules"],
                 ["edge", "Edge Cases"],
@@ -328,8 +333,114 @@ const QAChecklist = () => {
           </div>
         </Section>
 
-        {/* Section 5 */}
-        <Section title="5. Platform Filter Checks" id="platform">
+        {/* Section 5: Enterprise Config */}
+        <Section title="5. Enterprise Business & User Pricing" id="enterprise">
+          <p className="text-sm text-muted-foreground">
+            Enterprise plan supports custom businesses ({ENTERPRISE_BASE.businesses}–{ENTERPRISE_MAX_BUSINESSES}) and user slabs. Addon costs are constant across user types; MRP is back-calculated from discounted price using {ACTUAL_PLAN_DISCOUNTS.enterprise}% discount.
+          </p>
+          <Card className="rounded-xl">
+            <CardContent className="pt-4 pb-4">
+              <h4 className="font-semibold text-sm mb-2">Business Addon (per additional business, discounted)</h4>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Businesses</TableHead>
+                    <TableHead>Addon</TableHead>
+                    <TableHead>Fresh Total</TableHead>
+                    <TableHead>Fresh MRP</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[2, 3, 4, 5].map((biz) => {
+                    const addon = Math.max(0, biz - ENTERPRISE_BASE.businesses) * ENTERPRISE_EXTRA_BUSINESS_COST;
+                    const total = ANNUAL_DISCOUNTED.fresh.enterprise + addon;
+                    return (
+                      <TableRow key={biz}>
+                        <TableCell>{biz}</TableCell>
+                        <TableCell>{addon === 0 ? "Base" : `+${formatINR(addon)}`}</TableCell>
+                        <TableCell className="font-medium">{formatINR(total)}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatINR(getEnterpriseMRP(total))}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  <TableRow>
+                    <TableCell>6+</TableCell>
+                    <TableCell colSpan={3} className="text-amber-600 font-medium">Contact Sales</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+          <Card className="rounded-xl">
+            <CardContent className="pt-4 pb-4">
+              <h4 className="font-semibold text-sm mb-2">User Slab Addon (cumulative from base {ENTERPRISE_BASE.users} users)</h4>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Users</TableHead>
+                    <TableHead>Addon</TableHead>
+                    <TableHead>Fresh Total (2 biz)</TableHead>
+                    <TableHead>Fresh MRP</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ENTERPRISE_USER_SLAB_COSTS.map((slab) => {
+                    const total = ANNUAL_DISCOUNTED.fresh.enterprise + slab.addon;
+                    return (
+                      <TableRow key={slab.maxUsers}>
+                        <TableCell>{slab.label}</TableCell>
+                        <TableCell>{slab.addon === 0 ? "Base" : `+${formatINR(slab.addon)}`}</TableCell>
+                        <TableCell className="font-medium">{formatINR(total)}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatINR(getEnterpriseMRP(total))}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  <TableRow>
+                    <TableCell>16+</TableCell>
+                    <TableCell colSpan={3} className="text-amber-600 font-medium">Contact Sales</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+          <Card className="rounded-xl">
+            <CardContent className="pt-4 pb-4">
+              <h4 className="font-semibold text-sm mb-2">Cross-check Scenarios</h4>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                {[
+                  { biz: 5, users: 3 as const, label: "5 biz, 3 users" },
+                  { biz: 2, users: 10 as const, label: "2 biz, 6-10 users" },
+                  { biz: 2, users: 15 as const, label: "2 biz, 11-15 users" },
+                  { biz: 4, users: 4 as const, label: "4 biz, 4 users" },
+                  { biz: 4, users: 5 as const, label: "4 biz, 5 users" },
+                ].map((sc) => {
+                  const r = getEnterpriseAddon(sc.biz, sc.users);
+                  const total = ANNUAL_DISCOUNTED.fresh.enterprise + r.addonCost;
+                  return (
+                    <React.Fragment key={sc.label}>
+                      <span className="text-muted-foreground">{sc.label}</span>
+                      <span className="font-medium">{formatINR(total)} (MRP: {formatINR(getEnterpriseMRP(total))})</span>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="rounded-xl">
+            <CardContent className="pt-4 pb-4">
+              <h4 className="font-semibold text-sm mb-2">Upgrade Rules</h4>
+              <ul className="space-y-2">
+                <CheckItem>Enterprise-to-Enterprise upgrades are allowed (increase biz/users only)</CheckItem>
+                <CheckItem>Cannot downgrade: new biz ≥ current biz, new users ≥ current users</CheckItem>
+                <CheckItem>Enterprise current plan credit includes addon costs in PPD calculation</CheckItem>
+                <CheckItem>6+ businesses or 16+ users → "Contact Sales" replaces price breakdown</CheckItem>
+              </ul>
+            </CardContent>
+          </Card>
+        </Section>
+
+        {/* Section 6 */}
+        <Section title="6. Platform Filter Checks" id="platform">
           <Card className="rounded-xl">
             <CardContent className="pt-4 pb-4">
               <ul className="space-y-2">
@@ -359,8 +470,8 @@ const QAChecklist = () => {
           </Card>
         </Section>
 
-        {/* Section 6 */}
-        <Section title="6. Coupon / Discount Rules" id="coupon">
+        {/* Section 7 */}
+        <Section title="7. Coupon / Discount Rules" id="coupon">
           <Card className="rounded-xl">
             <CardContent className="pt-4 pb-4">
               <ul className="space-y-2">
@@ -395,8 +506,8 @@ const QAChecklist = () => {
           </Card>
         </Section>
 
-        {/* Section 7 */}
-        <Section title="7. Edge Cases" id="edge">
+        {/* Section 8 */}
+        <Section title="8. Edge Cases" id="edge">
           <Card className="rounded-xl">
             <CardContent className="pt-4 pb-4">
               <ul className="space-y-3">

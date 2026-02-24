@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { PLANS_BY_TYPE, USER_TYPE_LABELS, DURATIONS, DURATION_YEARS, calculateUpgradeCredit, formatINR, PLAN_PLATFORM, type UserType, type PlanName, type Duration, type Platform } from "@/lib/pricing-data";
-import { Crown, AlertCircle } from "lucide-react";
+import { PLANS_BY_TYPE, USER_TYPE_LABELS, DURATIONS, DURATION_YEARS, calculateUpgradeCredit, formatINR, PLAN_PLATFORM, ENTERPRISE_BASE, ENTERPRISE_MAX_BUSINESSES, ENTERPRISE_USER_STEPS, getEnterpriseUserSlabLabel, type UserType, type PlanName, type Duration, type Platform, type EnterpriseUserSlab } from "@/lib/pricing-data";
+import { Crown, AlertCircle, Plus, Minus } from "lucide-react";
 import { format, addDays } from "date-fns";
 
 const PLAN_BORDERS: Record<PlanName, string> = {
@@ -41,15 +41,24 @@ const PlanListValidation = () => {
   const [currentPlan, setCurrentPlan] = useState<PlanName>("diamond");
   const [currentDuration, setCurrentDuration] = useState<Duration>("1yr");
   const [startDate, setStartDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [currentBusinesses, setCurrentBusinesses] = useState<number>(ENTERPRISE_BASE.businesses);
+  const [currentUserSlab, setCurrentUserSlab] = useState<EnterpriseUserSlab>(3);
   const navigate = useNavigate();
 
   const isUpgrade = userType === "upgrade";
+  const isCurrentEnterprise = currentPlan === "enterprise";
   const plans = PLANS_BY_TYPE[userType];
 
   // Filter by platform, then by upgrade logic
   const platformPlans = plans.filter((p) => PLAN_PLATFORM[p.key].includes(platform));
   const visiblePlans = isUpgrade
-    ? platformPlans.filter((p) => PLAN_ORDER.indexOf(p.key) > PLAN_ORDER.indexOf(currentPlan))
+    ? platformPlans.filter((p) => {
+        const newIdx = PLAN_ORDER.indexOf(p.key);
+        const curIdx = PLAN_ORDER.indexOf(currentPlan);
+        // Allow enterprise-to-enterprise upgrade
+        if (p.key === "enterprise" && currentPlan === "enterprise") return true;
+        return newIdx > curIdx;
+      })
     : platformPlans;
 
   const currentPlanInfo = isUpgrade ? plans.find((p) => p.key === currentPlan) : null;
@@ -61,7 +70,11 @@ const PlanListValidation = () => {
 
   const goToCheckout = (planKey: PlanName) => {
     if (isUpgrade) {
-      navigate(`/calculator?plan=${planKey}&userType=upgrade&currentPlan=${currentPlan}&startDate=${startDate}&currentDuration=${currentDuration}`);
+      let url = `/calculator?plan=${planKey}&userType=upgrade&currentPlan=${currentPlan}&startDate=${startDate}&currentDuration=${currentDuration}`;
+      if (isCurrentEnterprise) {
+        url += `&currentBiz=${currentBusinesses}&currentUsers=${currentUserSlab}`;
+      }
+      navigate(url);
     } else {
       navigate(`/calculator?plan=${planKey}&userType=${userType}`);
     }
@@ -136,6 +149,7 @@ const PlanListValidation = () => {
                       <SelectItem value="silver">Silver</SelectItem>
                       <SelectItem value="diamond">Diamond</SelectItem>
                       <SelectItem value="platinum">Platinum</SelectItem>
+                      <SelectItem value="enterprise">Enterprise</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -162,6 +176,49 @@ const PlanListValidation = () => {
                   </Select>
                 </div>
               </div>
+              {/* Enterprise current plan config */}
+              {isCurrentEnterprise && (
+                <div className="grid grid-cols-2 gap-4 mt-4 pt-3 border-t border-amber-200">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Current Businesses</Label>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="icon" className="h-8 w-8"
+                        onClick={() => setCurrentBusinesses(Math.max(ENTERPRISE_BASE.businesses, currentBusinesses - 1))}
+                        disabled={currentBusinesses <= ENTERPRISE_BASE.businesses}>
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-8 text-center font-medium text-sm">{currentBusinesses}</span>
+                      <Button variant="outline" size="icon" className="h-8 w-8"
+                        onClick={() => setCurrentBusinesses(Math.min(ENTERPRISE_MAX_BUSINESSES, currentBusinesses + 1))}
+                        disabled={currentBusinesses >= ENTERPRISE_MAX_BUSINESSES}>
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Current Users</Label>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="icon" className="h-8 w-8"
+                        onClick={() => {
+                          const idx = ENTERPRISE_USER_STEPS.indexOf(currentUserSlab);
+                          if (idx > 0) setCurrentUserSlab(ENTERPRISE_USER_STEPS[idx - 1]);
+                        }}
+                        disabled={currentUserSlab <= 3}>
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-12 text-center font-medium text-sm">{getEnterpriseUserSlabLabel(currentUserSlab)}</span>
+                      <Button variant="outline" size="icon" className="h-8 w-8"
+                        onClick={() => {
+                          const idx = ENTERPRISE_USER_STEPS.indexOf(currentUserSlab);
+                          if (idx < ENTERPRISE_USER_STEPS.length - 2) setCurrentUserSlab(ENTERPRISE_USER_STEPS[idx + 1]);
+                        }}
+                        disabled={ENTERPRISE_USER_STEPS.indexOf(currentUserSlab) >= ENTERPRISE_USER_STEPS.length - 2}>
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {planEndDate && (
                 <p className="text-xs text-amber-700 mt-3">
                   Your {currentPlanInfo?.name} plan will auto renew on <strong>{format(planEndDate, "dd MMM yyyy")}</strong>
