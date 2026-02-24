@@ -214,7 +214,8 @@ export function calculateUpgradeCredit(
   currentPlan: PlanName,
   currentDuration: Duration,
   startDate: Date,
-  enterpriseAddon: number = 0
+  enterpriseAddon: number = 0,
+  currentPlanPurchaseType: UserType = "fresh"
 ): UpgradeCreditResult {
   const years = DURATION_YEARS[currentDuration];
   const totalDays = years * 365;
@@ -224,7 +225,7 @@ export function calculateUpgradeCredit(
   const today = new Date();
   const todayNorm = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const remainingDays = Math.max(0, Math.round((planEndDate.getTime() - todayNorm.getTime()) / (1000 * 60 * 60 * 24)));
-  const annualDiscounted = ANNUAL_DISCOUNTED.fresh[currentPlan] + enterpriseAddon;
+  const annualDiscounted = ANNUAL_DISCOUNTED[currentPlanPurchaseType][currentPlan] + enterpriseAddon;
   const subtotal = annualDiscounted * years;
   const multiYearDiscountPercent = MULTI_YEAR_DISCOUNTS[currentDuration];
   const totalPaid = Math.round(subtotal * (1 - multiYearDiscountPercent / 100) * 100) / 100;
