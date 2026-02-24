@@ -136,6 +136,58 @@ export const DURATIONS: { key: Duration; label: string; extraOff: string }[] = [
 export const GST_RATE = 18;
 export const COUPON_OPTIONS = [0, 5, 10, 15, 30];
 
+// --- Enterprise Business & User Customization ---
+
+export const ENTERPRISE_BASE = { businesses: 2, users: 3 };
+export const ENTERPRISE_EXTRA_BUSINESS_COST = 1000; // discounted, per additional business
+export const ENTERPRISE_MAX_BUSINESSES = 5; // 6+ = contact sales
+export const ENTERPRISE_MAX_USERS = 15; // 16+ = contact sales
+
+// Cumulative addon from base 3 users (discounted price)
+export const ENTERPRISE_USER_SLAB_COSTS: { maxUsers: number; addon: number; label: string }[] = [
+  { maxUsers: 3, addon: 0, label: "3" },
+  { maxUsers: 4, addon: 500, label: "4" },
+  { maxUsers: 5, addon: 1000, label: "5" },
+  { maxUsers: 10, addon: 2000, label: "6-10" },
+  { maxUsers: 15, addon: 5000, label: "11-15" },
+];
+
+export type EnterpriseUserSlab = 3 | 4 | 5 | 10 | 15 | 16;
+
+export const ENTERPRISE_USER_STEPS: EnterpriseUserSlab[] = [3, 4, 5, 10, 15, 16];
+
+export function getEnterpriseUserSlabLabel(slab: EnterpriseUserSlab): string {
+  if (slab === 10) return "6-10";
+  if (slab === 15) return "11-15";
+  if (slab === 16) return "16+";
+  return String(slab);
+}
+
+export function getEnterpriseUserAddon(userSlab: EnterpriseUserSlab): number {
+  const entry = ENTERPRISE_USER_SLAB_COSTS.find((s) => s.maxUsers === userSlab);
+  return entry?.addon ?? 0;
+}
+
+export interface EnterpriseAddonResult {
+  addonCost: number;
+  contactSales: boolean;
+  businessAddon: number;
+  userAddon: number;
+}
+
+export function getEnterpriseAddon(businesses: number, userSlab: EnterpriseUserSlab): EnterpriseAddonResult {
+  if (businesses > ENTERPRISE_MAX_BUSINESSES || userSlab > ENTERPRISE_MAX_USERS) {
+    return { addonCost: 0, contactSales: true, businessAddon: 0, userAddon: 0 };
+  }
+  const businessAddon = Math.max(0, businesses - ENTERPRISE_BASE.businesses) * ENTERPRISE_EXTRA_BUSINESS_COST;
+  const userAddon = getEnterpriseUserAddon(userSlab);
+  return { addonCost: businessAddon + userAddon, contactSales: false, businessAddon, userAddon };
+}
+
+export function getEnterpriseMRP(discountedTotal: number): number {
+  return Math.round(discountedTotal / (1 - ACTUAL_PLAN_DISCOUNTS.enterprise / 100));
+}
+
 export function formatINR(amount: number): string {
   return "₹" + amount.toLocaleString("en-IN", { maximumFractionDigits: 0 });
 }
@@ -161,7 +213,8 @@ export interface UpgradeCreditResult {
 export function calculateUpgradeCredit(
   currentPlan: PlanName,
   currentDuration: Duration,
-  startDate: Date
+  startDate: Date,
+  enterpriseAddon: number = 0
 ): UpgradeCreditResult {
   const years = DURATION_YEARS[currentDuration];
   const totalDays = years * 365;
@@ -171,7 +224,7 @@ export function calculateUpgradeCredit(
   const today = new Date();
   const todayNorm = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const remainingDays = Math.max(0, Math.round((planEndDate.getTime() - todayNorm.getTime()) / (1000 * 60 * 60 * 24)));
-  const annualDiscounted = ANNUAL_DISCOUNTED.fresh[currentPlan];
+  const annualDiscounted = ANNUAL_DISCOUNTED.fresh[currentPlan] + enterpriseAddon;
   const subtotal = annualDiscounted * years;
   const multiYearDiscountPercent = MULTI_YEAR_DISCOUNTS[currentDuration];
   const totalPaid = Math.round(subtotal * (1 - multiYearDiscountPercent / 100) * 100) / 100;
@@ -204,11 +257,15 @@ export function calculateBreakdown(
   duration: Duration,
   couponPercent: number,
   userType: UserType,
-  upgradeCredit: number = 0
+  upgradeCredit: number = 0,
+  enterpriseAddon: number = 0
 ): PriceBreakdown {
-  const originalPrice = MRP_TABLES[userType][plan][duration];
   const years = DURATION_YEARS[duration];
-  const annualDiscounted = ANNUAL_DISCOUNTED[userType][plan];
+  const baseAnnualDiscounted = ANNUAL_DISCOUNTED[userType][plan];
+  const annualDiscounted = baseAnnualDiscounted + (plan === "enterprise" ? enterpriseAddon : 0);
+  const originalPrice = plan === "enterprise"
+    ? getEnterpriseMRP(annualDiscounted) * years
+    : MRP_TABLES[userType][plan][duration];
   const priceAfterPlanDiscount = annualDiscounted * years;
   const planDiscountAmount = originalPrice - priceAfterPlanDiscount;
 
