@@ -1,39 +1,57 @@
 
 
-# Enterprise-to-Enterprise: "No Upgrade Selected" State
+# Fix: PPD Credit Based on Original Purchase Type
 
 ## Problem
-When upgrading Enterprise-to-Enterprise with the same configuration (e.g., 2 businesses, 3 users -> 2 businesses, 3 users), the tool currently shows full pricing (Original Price, discounts, GST, etc.). This is wrong -- there's no actual upgrade happening. The real UI (screenshot 1) shows all prices as ₹0 and displays a message: **"Please select an option that is higher than your current plan."**
+The upgrade credit (PPD) calculation always uses the **Fresh** discounted price as the base for what the user originally paid. But if the user purchased their current plan as a **renewal** (after or before Feb 2024), they paid a higher price for Platinum (₹3,999 or ₹5,999) or Enterprise (₹5,999 or ₹8,999). This means the credit calculation underestimates what they're owed.
+
+Silver and Diamond prices are identical across all cohorts, so this only matters for Platinum and Enterprise.
 
 ## Solution
-Detect when an Enterprise-to-Enterprise upgrade has no actual upgrade (new businesses and users are the same as current), and replace the price breakdown with a prompt message.
+Add a "Current Plan Purchase Type" selector in the upgrade flow's Current Plan Details card. It asks: **"How was this plan purchased?"** with options:
+- First-time purchase (default) -- uses Fresh prices
+- Renewal (after 16 Feb 2024) -- uses renewal_after prices
+- Renewal (before 16 Feb 2024) -- uses renewal_before prices
+
+This selector only appears when the current plan is **Platinum** or **Enterprise** (since Silver/Diamond prices don't vary).
+
+The selected value is passed to `calculateUpgradeCredit` which uses the corresponding `ANNUAL_DISCOUNTED` tier.
 
 ## Technical Details
 
+### `src/lib/pricing-data.ts`
+
+Update `calculateUpgradeCredit` to accept a new optional parameter `currentPlanPurchaseType: UserType` (default `"fresh"`). Change line 227 from:
+```
+const annualDiscounted = ANNUAL_DISCOUNTED.fresh[currentPlan] + enterpriseAddon;
+```
+to:
+```
+const annualDiscounted = ANNUAL_DISCOUNTED[currentPlanPurchaseType][currentPlan] + enterpriseAddon;
+```
+
 ### `src/pages/CheckoutCalculator.tsx`
 
-**New derived boolean** (around line 82):
-```
-const isEnterpriseNoUpgrade = isUpgrade && isEnterprise && isCurrentEnterprise
-  && businesses === currentBusinesses && userSlab === currentUserSlab;
-```
+1. Add state: `currentPlanPurchaseType` with type `UserType`, default `"fresh"`.
 
-**Customise Plan card** -- after the Enterprise Configuration section (after the contact sales banner, around line 470):
-- When `isEnterpriseNoUpgrade` is true, show a muted message:
-  "Please select an option that is higher than your current plan."
+2. In the Current Plan Details card (upgrade section), after the current duration selector, add a "Plan Purchase Type" selector -- only visible when `currentPlan` is `"platinum"` or `"enterprise"`. Three radio options:
+   - "First-time purchase" (fresh)
+   - "Renewal (after 16 Feb 2024)" (renewal_after)  
+   - "Renewal (before 16 Feb 2024)" (renewal_before)
 
-**Price Details card** (right column, around line 526):
-- Add `isEnterpriseNoUpgrade` as another condition alongside `contactSales`. When either is true, don't show the price breakdown.
-- For the `isEnterpriseNoUpgrade` case, show a simple message (different from the Contact Sales one): an info icon with "Please select a higher configuration to see pricing."
+3. Pass `currentPlanPurchaseType` to `calculateUpgradeCredit`.
 
-This means the Price Details card has 3 states:
-1. `contactSales` -- shows "Contact Sales" message
-2. `isEnterpriseNoUpgrade` -- shows "Select higher config" message
-3. Normal -- shows full price breakdown
+4. In the PPD breakdown collapsible, show which purchase type is being used for the base price so QA can verify.
+
+### `src/pages/QAChecklist.tsx`
+
+Add a note in the PPD section mentioning that credit varies based on original purchase type, with example values for Platinum Fresh vs Renewal After.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/pages/CheckoutCalculator.tsx` | Add `isEnterpriseNoUpgrade` check; show message in Customise Plan card; add third state to Price Details card |
+| `src/lib/pricing-data.ts` | Add `currentPlanPurchaseType` param to `calculateUpgradeCredit` |
+| `src/pages/CheckoutCalculator.tsx` | Add purchase type selector in upgrade card, pass to credit calc |
+| `src/pages/QAChecklist.tsx` | Add note about purchase type impact on PPD |
 
