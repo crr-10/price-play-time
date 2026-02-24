@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Plus, Minus, Phone } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Plus, Minus, Phone, Info } from "lucide-react";
 import { format, addDays } from "date-fns";
 import {
   type PlanName,
@@ -67,6 +67,8 @@ const CheckoutCalculator = () => {
   // Current enterprise config for enterprise-to-enterprise upgrades
   const [currentBusinesses, setCurrentBusinesses] = useState<number>(ENTERPRISE_BASE.businesses);
   const [currentUserSlab, setCurrentUserSlab] = useState<EnterpriseUserSlab>(3);
+  // Purchase type of the current plan (for PPD calculation)
+  const [currentPlanPurchaseType, setCurrentPlanPurchaseType] = useState<UserType>("fresh");
 
   const isUpgrade = userType === "upgrade";
   const isEnterprise = plan === "enterprise";
@@ -93,7 +95,7 @@ const CheckoutCalculator = () => {
 
   // Calculate upgrade credit
   const upgradeCreditResult = isUpgrade
-    ? calculateUpgradeCredit(currentPlan, currentDuration, new Date(startDate), isCurrentEnterprise ? currentEnterpriseAddon : 0)
+    ? calculateUpgradeCredit(currentPlan, currentDuration, new Date(startDate), isCurrentEnterprise ? currentEnterpriseAddon : 0, currentPlanPurchaseType)
     : null;
   const upgradeCredit = upgradeCreditResult?.credit ?? 0;
 
@@ -255,7 +257,33 @@ const CheckoutCalculator = () => {
                     </div>
                   </div>
 
-                  {/* Enterprise current plan config */}
+                  {/* Purchase type selector for Platinum/Enterprise */}
+                  {(currentPlan === "platinum" || currentPlan === "enterprise") && (
+                    <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Info className="h-3 w-3" />
+                        How was this plan originally purchased?
+                      </Label>
+                      <div className="flex flex-col gap-1.5">
+                        {([
+                          { value: "fresh", label: "First-time purchase" },
+                          { value: "renewal_after", label: "Renewal (after 16 Feb 2024)" },
+                          { value: "renewal_before", label: "Renewal (before 16 Feb 2024)" },
+                        ] as { value: UserType; label: string }[]).map((opt) => (
+                          <label key={opt.value} className="flex items-center gap-2 text-xs cursor-pointer">
+                            <input
+                              type="radio"
+                              name="currentPlanPurchaseType"
+                              checked={currentPlanPurchaseType === opt.value}
+                              onChange={() => setCurrentPlanPurchaseType(opt.value)}
+                              className="accent-amber-600"
+                            />
+                            {opt.label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {isCurrentEnterprise && (
                     <div className="grid grid-cols-2 gap-4 mt-4 pt-3 border-t border-amber-200">
                       <div className="space-y-1.5">
@@ -316,6 +344,14 @@ const CheckoutCalculator = () => {
                         {ppdOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                       </CollapsibleTrigger>
                       <CollapsibleContent className="space-y-1.5 text-xs text-muted-foreground pt-2">
+                        {(currentPlan === "platinum" || currentPlan === "enterprise") && (
+                          <div className="flex justify-between text-amber-700">
+                            <span>Purchase Type</span>
+                            <span className="font-medium">
+                              {currentPlanPurchaseType === "fresh" ? "First-time" : currentPlanPurchaseType === "renewal_after" ? "Renewal (after Feb '24)" : "Renewal (before Feb '24)"}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span>Annual Discounted Price{isCurrentEnterprise && currentEnterpriseAddon > 0 ? " (incl. addons)" : ""}</span>
                           <span>{formatINR(upgradeCreditResult.annualDiscounted)}</span>

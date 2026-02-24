@@ -434,6 +434,11 @@ const QAChecklist = () => {
                 <CheckItem>Cannot downgrade: new biz ≥ current biz, new users ≥ current users</CheckItem>
                 <CheckItem>Enterprise current plan credit includes addon costs in PPD calculation</CheckItem>
                 <CheckItem>6+ businesses or 16+ users → "Contact Sales" replaces price breakdown</CheckItem>
+                <CheckItem>
+                  <strong>PPD purchase type</strong>: For Platinum/Enterprise upgrades, the credit varies based on how the current plan was purchased.
+                  Platinum Fresh = {formatINR(ANNUAL_DISCOUNTED.fresh.platinum)}/yr vs Renewal After = {formatINR(ANNUAL_DISCOUNTED.renewal_after.platinum)}/yr.
+                  Enterprise Fresh = {formatINR(ANNUAL_DISCOUNTED.fresh.enterprise)}/yr vs Renewal After = {formatINR(ANNUAL_DISCOUNTED.renewal_after.enterprise)}/yr.
+                </CheckItem>
               </ul>
             </CardContent>
           </Card>
