@@ -1,77 +1,137 @@
 
 
-# QA Checklist Page
+# Enterprise Plan: Business & User Customization
 
-## What We're Building
-A new `/qa-checklist` page that serves as a comprehensive testing reference for the pricing and checkout changes described in the PRD. QA can open this page and see exactly what to verify, with direct links to the relevant pages in the tool (plan list / checkout) pre-configured with the right parameters.
+## Pricing Analysis (Back-Calculated from User Data)
 
-## Page Structure
+The Enterprise base price (2 businesses, 3 users) varies by user type but addon costs are constant. The 44.45% discount rate stays fixed, so MRP scales proportionally.
 
-### Section 1: Multi-Year Discount Verification
-A table showing each tenure (1, 2, 3, 5, 10 years) with the expected discount percentages. QA compares these against what they see on staging.
+```text
+Enterprise Base (discounted, annual):
+  Fresh:          4,999
+  Renewal After:  5,999
+  Renewal Before: 8,999
 
-| Tenure | Expected Discount |
-|--------|------------------|
-| 1 year | 0% |
-| 2 years | 5% |
-| 3 years | 10% |
-| 5 years | 15% |
-| 10 years | 30% |
+Additional Business Cost (discounted, per business):
+  +1 business (3 total): +1,000
+  +2 business (4 total): +2,000
+  +3 business (5 total): +3,000
+  6+ businesses: Contact Sales
 
-### Section 2: Label Price (MRP) and Discount % Validation
-For each of the 4 user types (Fresh, Renewal After, Renewal Before, Upgrade), show a table of all 4 plans with:
-- Expected MRP (struck-through price)
-- Expected discount %
-- Expected final annual price
+Additional User Cost (discounted, slab-based):
+  4 users:    +500
+  5 users:    +1,000
+  6-10 users: +2,000
+  11-15 users:+5,000
+  16+ users:  Contact Sales
 
-Values pulled directly from `pricing-data.ts` so it's always in sync with the code. Each scenario has a "Open in Plan List" link that navigates to `/?userType=...`.
+Cross-check: 4 biz, 4 users (Fresh)
+  = 4,999 + 2,000 + 500 = 7,499 (matches)
+  MRP = 7,499 / 0.5555 = 13,500 (screenshot shows 14,400... let me re-check)
+```
 
-### Section 3: Checkout Price Breakdown Scenarios
-Pre-built test scenarios with "Open in Checkout" links:
-- Fresh + Platinum + 1yr (baseline)
-- Fresh + Diamond + 3yr (multi-year discount)
-- Renewal After + Platinum + 2yr
-- Renewal Before + Enterprise + 5yr
-- Upgrade: Diamond to Platinum, 1yr
-- Upgrade: Silver to Diamond, 3yr
+Wait -- the screenshot shows 5 businesses, 3 users = discounted 7,999, MRP 14,400.
+MRP = 7,999 / (1 - 0.4445) = 7,999 / 0.5555 = 14,399.64 ~ 14,400. Confirmed.
 
-Each scenario shows the expected values (original price, discount %, price after discount, GST, total) computed from the existing `calculateBreakdown` function -- so QA can compare against staging.
+For the base: 4,999 / 0.5555 = 8,999.1 ~ 8,999. Confirmed.
 
-### Section 4: Upgrade Credit (PPD) Verification
-Test cases for upgrade credit calculation:
-- Diamond 1yr started recently -- expected PPD and credit
-- Diamond 2yr (5% multi-year discount) -- verify PPD is lower
-- Platinum 3yr (10% discount) -- verify credit calculation
+MRP formula: `Math.round(discountedTotal / (1 - 0.4445))`
 
-Each shows the expected PPD breakdown inline.
+## Changes
 
-### Section 5: Platform Filter Checks
-- Android: all 4 plans visible
-- Web: Silver hidden, only 3 plans visible
-- Switching from Android to Web while Silver is selected auto-switches to Diamond
+### 1. `src/lib/pricing-data.ts` -- Enterprise Addon Data & Helpers
 
-### Section 6: Coupon/Discount Rules
-- Fresh users: coupon section enabled
-- Renewal users: coupon section disabled with message
-- Upgrade users: coupon section disabled with message
+Add enterprise configuration types and pricing constants:
 
-### Section 7: Edge Cases
-- Negative total price (credit > price after discount)
-- Expired plan (remaining days = 0, credit = 0)
-- Same-day start (maximum remaining days)
-- GST computed on post-credit amount
+```text
+ENTERPRISE_BASE = { businesses: 2, users: 3 }
+ENTERPRISE_EXTRA_BUSINESS_COST = 1000  (per additional business, discounted)
+ENTERPRISE_MAX_BUSINESSES = 5  (6+ = contact sales)
 
-## Technical Details
+ENTERPRISE_USER_SLAB_COSTS (discounted, cumulative addon from base 3 users):
+  3 users:  0
+  4 users:  500
+  5 users:  1000
+  6-10:     2000
+  11-15:    5000
+  16+:      contact sales
 
-### New file: `src/pages/QAChecklist.tsx`
-- Import pricing data functions and constants from `pricing-data.ts`
-- Compute expected values dynamically using the same functions the checkout uses (`calculateBreakdown`, `calculateUpgradeCredit`)
-- Each test scenario rendered as a card with expected values and a link to open that scenario in the plan list or checkout page
-- Uses existing UI components (Card, Table, Badge, Button)
+ENTERPRISE_MAX_USERS = 15  (16+ = contact sales)
+```
 
-### `src/App.tsx`
-- Add route: `<Route path="/qa" element={<QAChecklist />} />`
+Add helper function:
+- `getEnterpriseAddon(businesses, users)` -- returns `{ addonCost, contactSales }` with the total addon on discounted price
+- `getEnterpriseTotalDiscounted(userType, businesses, users)` -- returns base + addon
+- `getEnterpriseMRP(discountedTotal)` -- returns `Math.round(discountedTotal / (1 - 0.4445))`
 
-### Navigation
-- Add a small "QA Checklist" link in the header of the Plan List page so it's easily discoverable
+Modify `calculateBreakdown` to accept optional `enterpriseAddon` parameter (default 0). This addon is added to both the original MRP and the discounted price proportionally.
+
+### 2. `src/pages/CheckoutCalculator.tsx` -- Business & User Selectors
+
+Add state:
+- `businesses` (default 2, min 2, max 5 for selectable; 6+ shows "Contact Sales")
+- `users` (default 3, min 3; selectable values: 3, 4, 5, 6-10, 11-15; 16+ shows "Contact Sales")
+
+UI (only shown when `plan === "enterprise"`):
+- "Number of Businesses" row with -/+ stepper (like the screenshot), between Duration and Coupon sections
+- "Number of Users" row with -/+ stepper
+- When contact sales threshold is hit, show a message instead of price calculation
+- The +/- buttons enforce min = base values (2 businesses, 3 users)
+
+For **upgrades to Enterprise** or **Enterprise-to-Enterprise upgrades**:
+- Allow Enterprise as a current plan option (it's currently missing from the selector)
+- When current plan is Enterprise, show current businesses/users selectors in the Current Plan Details card
+- New plan businesses/users must be >= current values (no downgrade)
+- The - button is disabled when at the current plan's values
+
+Price integration:
+- Compute enterprise addon, pass to `calculateBreakdown` 
+- The addon affects Original Price (MRP) and Price After Discount proportionally
+- All downstream calculations (multi-year, coupon, GST) work on the new totals
+
+### 3. `src/pages/PlanListValidation.tsx` -- Enterprise-to-Enterprise Upgrade
+
+Currently the upgrade plan selector excludes "enterprise" as a current plan option, and the visible plans filter only shows plans with a higher index. Changes:
+- Add "Enterprise" to the current plan dropdown
+- When current plan is Enterprise, show Enterprise in the upgrade targets (enterprise-to-enterprise)
+- Add businesses/users selectors in the upgrade config card for Enterprise current plans
+
+### 4. `src/pages/QAChecklist.tsx` -- Enterprise Addon Test Cases
+
+Add a new section "Enterprise Business & User Pricing" with:
+- Table of expected addon costs per configuration
+- Test scenarios: Fresh Enterprise 5 biz / 3 users = 7,999; 2 biz / 11-15 users = 9,999
+- Upgrade scenario: Platinum to Enterprise with custom config
+- Enterprise-to-Enterprise upgrade scenario
+
+### 5. Upgrade Credit for Enterprise Current Plans
+
+When the current plan is Enterprise with addons, the credit calculation needs the total discounted price (base + addons). Modify `calculateUpgradeCredit` to accept an optional `enterpriseAddon` parameter that gets added to the annual discounted price before computing PPD.
+
+## User Slab Selection UX
+
+For the user count, since slabs are ranges (6-10, 11-15), the selector works as:
+- Values 3, 4, 5 are individual increments (+/- by 1)
+- Clicking + from 5 jumps to "6-10" (displayed as a slab label)
+- Clicking + from "6-10" jumps to "11-15"
+- Clicking + from "11-15" shows "Contact Sales" state
+- Clicking - from "6-10" goes back to 5
+
+Similarly for businesses: individual increments 2-5, then "Contact Sales" at 6+.
+
+## Contact Sales State
+
+When either businesses or users hit the contact sales threshold:
+- Price Details card shows "Contact Sales for Pricing" instead of calculated prices
+- The "Make Payment" equivalent area shows a "Contact Sales" message
+- The selectors still allow going back down
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| `src/lib/pricing-data.ts` | Enterprise addon constants, helper functions, modified `calculateBreakdown` and `calculateUpgradeCredit` |
+| `src/pages/CheckoutCalculator.tsx` | Business/user selectors, contact sales state, enterprise addon integration |
+| `src/pages/PlanListValidation.tsx` | Enterprise as current plan option, enterprise-to-enterprise upgrades |
+| `src/pages/QAChecklist.tsx` | Enterprise addon test cases section |
 
