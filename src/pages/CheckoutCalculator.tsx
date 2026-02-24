@@ -87,6 +87,10 @@ const CheckoutCalculator = () => {
     : null;
   const currentEnterpriseAddon = currentEnterpriseResult?.addonCost ?? 0;
 
+  // Enterprise-to-Enterprise with no actual upgrade (same config)
+  const isEnterpriseNoUpgrade = isUpgrade && isEnterprise && isCurrentEnterprise
+    && businesses === currentBusinesses && userSlab === currentUserSlab;
+
   // Calculate upgrade credit
   const upgradeCreditResult = isUpgrade
     ? calculateUpgradeCredit(currentPlan, currentDuration, new Date(startDate), isCurrentEnterprise ? currentEnterpriseAddon : 0)
@@ -468,6 +472,15 @@ const CheckoutCalculator = () => {
                         </div>
                       </div>
                     )}
+
+                    {isEnterpriseNoUpgrade && !contactSales && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-md px-4 py-3 flex items-center gap-3">
+                        <AlertCircle className="h-4 w-4 text-blue-600 shrink-0" />
+                        <p className="text-sm text-blue-800">
+                          Please select an option that is higher than your current plan.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -529,6 +542,14 @@ const CheckoutCalculator = () => {
                     <h3 className="font-bold text-lg">Contact Sales</h3>
                     <p className="text-sm text-muted-foreground">
                       Custom pricing is available for your enterprise configuration. Please contact our sales team.
+                    </p>
+                  </div>
+                ) : isEnterpriseNoUpgrade ? (
+                  <div className="text-center py-8 space-y-3">
+                    <AlertCircle className="h-10 w-10 text-blue-500 mx-auto" />
+                    <h3 className="font-bold text-lg">No Upgrade Selected</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Please select a higher configuration to see pricing.
                     </p>
                   </div>
                 ) : b && (
