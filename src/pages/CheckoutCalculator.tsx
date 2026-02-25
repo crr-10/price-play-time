@@ -165,6 +165,17 @@ const CheckoutCalculator = () => {
     }
   }, [platform, plan]);
 
+  // Auto-adjust duration upward if below minimum for upgrade
+  useEffect(() => {
+    if (!isUpgrade) return;
+    const remainingDays = upgradeCreditResult?.remainingDays ?? 0;
+    const minUpgradeYears = Math.max(1, Math.ceil(remainingDays / 365));
+    if (DURATION_YEARS[duration] < minUpgradeYears) {
+      const validDuration = DURATIONS.find((d) => DURATION_YEARS[d.key] >= minUpgradeYears);
+      if (validDuration) setDuration(validDuration.key);
+    }
+  }, [isUpgrade, upgradeCreditResult?.remainingDays, duration]);
+
   // Enforce upgrade constraints
   const minBusinesses = isUpgrade && isCurrentEnterprise && isEnterprise ? currentBusinesses : ENTERPRISE_BASE.businesses;
   const minUserSlabIdx = isUpgrade && isCurrentEnterprise && isEnterprise
@@ -516,7 +527,12 @@ const CheckoutCalculator = () => {
                   <Select value={duration} onValueChange={(v) => setDuration(v as Duration)}>
                     <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {DURATIONS.map((d) => (
+                      {DURATIONS.filter((d) => {
+                        if (!isUpgrade) return true;
+                        const remainingDays = upgradeCreditResult?.remainingDays ?? 0;
+                        const minUpgradeYears = Math.max(1, Math.ceil(remainingDays / 365));
+                        return DURATION_YEARS[d.key] >= minUpgradeYears;
+                      }).map((d) => (
                         <SelectItem key={d.key} value={d.key}>
                           {d.label} {d.extraOff && `(${d.extraOff})`}
                         </SelectItem>
