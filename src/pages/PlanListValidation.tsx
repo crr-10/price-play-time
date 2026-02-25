@@ -268,11 +268,20 @@ const PlanListValidation = () => {
               )}
               {planEndDate && (
                 <p className="text-xs text-amber-700 mt-3">
-                  Your {currentPlanInfo?.name} plan will auto renew on <strong>{format(planEndDate, "dd MMM yyyy")}</strong>
+                  Your <strong>{currentPlanInfo?.name}</strong> plan expires on <strong>{format(planEndDate, "dd MMM yyyy")}</strong>
                 </p>
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* Expiry Banner for Upgrade */}
+        {isUpgrade && planEndDate && currentPlanInfo && (
+          <div className="mb-6 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-center">
+            <p className="text-sm text-amber-800">
+              Your <strong>{currentPlanInfo.name}</strong> plan expires on <strong>{format(planEndDate, "dd MMM yyyy")}</strong>
+            </p>
+          </div>
         )}
 
         {/* Plan Cards */}
