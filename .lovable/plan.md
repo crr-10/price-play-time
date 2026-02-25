@@ -1,40 +1,52 @@
 
 
-# Fix MRP Calculation: Back-Calculate from Discounted Price
+# Restrict Upgrade Duration Based on Remaining Days + Show Expiry on Plan List
 
-## Problem
-The tool stores hardcoded MRP values (e.g., Diamond = 3599/yr) and multiplies them for multi-year. The backend instead stores only the **discounted price** and **back-calculates MRP** using the plan discount percentage. This causes 1 rupee rounding differences.
+## Overview
 
-Example (Diamond, 3yr, Fresh):
-- Current tool: 3599 x 3 = **10,797**
-- Backend: (2599 x 3) / (1 - 0.2779) = 10,797.67 → **10,798**
+Two changes:
+1. On the **Plan List page** (upgrade mode), show a banner: "Your [plan] plan expires on [date]" (matching the screenshot)
+2. On the **Checkout page** (upgrade mode), filter the duration dropdown so users can only select durations >= their remaining time (rounded up to the next year ceiling)
 
-## Solution
-Remove hardcoded MRP values entirely. Back-calculate MRP from discounted prices, matching the backend formula. This is already done for Enterprise via `getEnterpriseMRP()` -- we just need to generalize it to all plans.
-
-## Technical Changes
-
-### `src/lib/pricing-data.ts`
-
-1. **Remove `mrp` from `ANNUAL_PRICES`** -- only store `discounted` values
-2. **Back-calculate MRP everywhere** using: `Math.round(discounted / (1 - actualDiscountPercent / 100))`
-3. **Update `buildPlans()`** to compute `annualMRP` from discounted price instead of reading it
-4. **Update `buildMrpTable()`** to compute MRP per duration as `Math.round((discounted * years) / (1 - actualDiscountPercent / 100))` -- back-calculate from the total discounted amount for that duration, not per-year then multiply
-5. **Update `calculateBreakdown()`** -- the `originalPrice` should use this same back-calculation for all plans (not just Enterprise)
-
-### Key formula (applied per-plan, per-duration)
+## Duration Restriction Logic
 
 ```text
-totalDiscounted = annualDiscounted * years
-originalPrice = Math.round(totalDiscounted / (1 - actualDiscountPercent / 100))
-planDiscountAmount = originalPrice - totalDiscounted
+remainingDays = planEndDate - today
+minYears = Math.ceil(remainingDays / 365)
 ```
 
-This ensures Diamond 3yr = Math.round(7797 / 0.7221) = 10,798, matching the backend.
+- remaining <= 365 days (1yr) --> show 1yr and above
+- remaining <= 730 days (2yr) --> show 2yr and above
+- remaining <= 1095 days (3yr) --> show 3yr and above
+- etc.
 
-### Files Changed
+If the currently selected duration is below the minimum, auto-adjust it upward.
+
+## Changes
+
+### 1. Plan List Page (`src/pages/PlanListValidation.tsx`)
+
+- Change the existing "auto renew" text (line 271) to match the production wording: **"Your [plan] plan expires on [date]"**
+- Style it as a prominent banner above the plan cards (matching the screenshot -- centered, light background)
+
+### 2. Checkout Page (`src/pages/CheckoutCalculator.tsx`)
+
+- Calculate `minDuration` from remaining days of current plan:
+  ```typescript
+  const remainingDays = upgradeCreditResult?.remainingDays ?? 0;
+  const minUpgradeYears = Math.max(1, Math.ceil(remainingDays / 365));
+  ```
+- Filter `DURATIONS` in the dropdown to only show durations where `DURATION_YEARS[d.key] >= minUpgradeYears`
+- Add a `useEffect` to auto-adjust `duration` upward if the current selection falls below the minimum
+- This only applies when `userType === "upgrade"`
+
+### 3. Pricing Data (`src/lib/pricing-data.ts`)
+
+No changes needed -- all required data (DURATION_YEARS, DURATIONS) already exists.
+
+## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/lib/pricing-data.ts` | Remove hardcoded MRP, back-calculate from discounted price using actual discount percentages |
-
+| `src/pages/PlanListValidation.tsx` | Update expiry banner text to "Your [plan] plan expires on [date]" |
+| `src/pages/CheckoutCalculator.tsx` | Filter duration dropdown based on remaining days, auto-adjust selection |
