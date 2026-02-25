@@ -282,6 +282,7 @@ const QAChecklist = () => {
             <h3 className="font-semibold text-sm mb-2">Jump to section</h3>
             <div className="flex flex-wrap gap-2">
               {[
+                ["mrp-formula", "MRP Calculation Formula"],
                 ["multi-year", "Multi-Year Discounts"],
                 ["mrp", "MRP & Discount %"],
                 ["checkout", "Checkout Scenarios"],
@@ -300,6 +301,73 @@ const QAChecklist = () => {
           </CardContent>
         </Card>
 
+        {/* Section 0: MRP Calculation Formula */}
+        <Section title="⚙️ How MRP is Calculated (Back-Calculation)" id="mrp-formula">
+          <Card className="rounded-xl">
+            <CardContent className="pt-4 pb-4 space-y-4">
+              <div className="text-sm space-y-2">
+                <p>
+                  <strong>We do NOT store hardcoded MRP values.</strong> Instead, we store only the <Badge variant="secondary">discounted price</Badge> and 
+                  the <Badge variant="secondary">actual discount %</Badge> for each plan, then <strong>back-calculate</strong> the MRP (strike-off price) using:
+                </p>
+                <div className="bg-muted rounded-lg p-3 font-mono text-xs space-y-1">
+                  <p>MRP = Math.round(discounted / (1 - actualDiscountPercent / 100))</p>
+                  <p className="text-muted-foreground">// For multi-year:</p>
+                  <p>totalDiscounted = annualDiscounted × years</p>
+                  <p>originalPrice = Math.round(totalDiscounted / (1 - actualDiscountPercent / 100))</p>
+                </div>
+                <p className="text-muted-foreground">
+                  This matches the backend exactly — the backend also back-calculates MRP from the discounted price, avoiding ₹1 rounding differences that occur when hardcoding MRP and multiplying for multi-year.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Plan Discount Rates</h4>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Display %</TableHead>
+                      <TableHead>Actual %</TableHead>
+                      <TableHead>Fresh Discounted</TableHead>
+                      <TableHead>Back-Calc MRP (1yr)</TableHead>
+                      <TableHead>Back-Calc MRP (3yr)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {PLAN_NAMES.map((plan) => {
+                      const discounted = ANNUAL_DISCOUNTED.fresh[plan];
+                      const actual = ACTUAL_PLAN_DISCOUNTS[plan];
+                      const mrp1 = Math.round(discounted / (1 - actual / 100));
+                      const mrp3 = Math.round((discounted * 3) / (1 - actual / 100));
+                      return (
+                        <TableRow key={plan}>
+                          <TableCell className="font-medium capitalize">{plan}</TableCell>
+                          <TableCell>{PLAN_DISCOUNTS[plan]}%</TableCell>
+                          <TableCell className="font-mono text-xs">{actual}%</TableCell>
+                          <TableCell>{formatINR(discounted)}</TableCell>
+                          <TableCell>{formatINR(mrp1)}</TableCell>
+                          <TableCell>{formatINR(mrp3)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="text-sm">
+                <h4 className="font-semibold mb-1">Example: Diamond, 3yr, Fresh</h4>
+                <div className="bg-muted rounded-lg p-3 font-mono text-xs space-y-1">
+                  <p>annualDiscounted = ₹2,599</p>
+                  <p>totalDiscounted = 2599 × 3 = ₹7,797</p>
+                  <p>originalPrice = Math.round(7797 / (1 - 0.2779))</p>
+                  <p>             = Math.round(7797 / 0.7221)</p>
+                  <p>             = Math.round(10797.67) = <strong>₹10,798</strong></p>
+                  <p className="text-emerald-600">✓ Matches backend exactly</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Section>
+
         {/* Section 1 */}
         <Section title="1. Multi-Year Discount Verification" id="multi-year">
           <p className="text-sm text-muted-foreground">
@@ -315,7 +383,7 @@ const QAChecklist = () => {
         {/* Section 2 */}
         <Section title="2. Label Price (MRP) & Discount % Validation" id="mrp">
           <p className="text-sm text-muted-foreground">
-            For each user type, verify the struck-through MRP, discount badge %, and annual price on the plan list page.
+            MRP values below are <strong>back-calculated</strong> from discounted prices (not hardcoded). For each user type, verify the struck-through MRP, discount badge %, and annual price on the plan list page.
           </p>
           <div className="space-y-4">
             {USER_TYPES.map((ut) => (
