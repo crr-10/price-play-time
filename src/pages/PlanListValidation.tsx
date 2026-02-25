@@ -70,13 +70,13 @@ const PlanListValidation = () => {
 
   const goToCheckout = (planKey: PlanName) => {
     if (isUpgrade) {
-      let url = `/calculator?plan=${planKey}&userType=upgrade&currentPlan=${currentPlan}&startDate=${startDate}&currentDuration=${currentDuration}`;
+      let url = `/calculator?plan=${planKey}&userType=upgrade&currentPlan=${currentPlan}&startDate=${startDate}&currentDuration=${currentDuration}&platform=${platform}`;
       if (isCurrentEnterprise) {
         url += `&currentBiz=${currentBusinesses}&currentUsers=${currentUserSlab}`;
       }
       navigate(url);
     } else {
-      navigate(`/calculator?plan=${planKey}&userType=${userType}`);
+      navigate(`/calculator?plan=${planKey}&userType=${userType}&platform=${platform}`);
     }
   };
 
