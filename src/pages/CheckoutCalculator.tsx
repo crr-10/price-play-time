@@ -50,7 +50,9 @@ const CheckoutCalculator = () => {
   const [userType, setUserType] = useState<UserType>(initialUserType);
   const [discountOpen, setDiscountOpen] = useState(false);
   const [ppdOpen, setPpdOpen] = useState(false);
-  const [platform, setPlatform] = useState<Platform>("android");
+  const [platform, setPlatform] = useState<Platform>(
+    (searchParams.get("platform") as Platform) === "web" ? "web" : "android"
+  );
 
   // Enterprise customization
   const [businesses, setBusinesses] = useState<number>(ENTERPRISE_BASE.businesses);
