@@ -1,83 +1,40 @@
 
-# Shareable URLs with "Copy Scenario" Button
 
-## Overview
+# Fix MRP Calculation: Back-Calculate from Discounted Price
 
-Make every page's state fully driven by URL search params so any scenario can be shared via link. Add a "Copy Scenario" button on each page that copies the current URL to clipboard with a toast confirmation.
+## Problem
+The tool stores hardcoded MRP values (e.g., Diamond = 3599/yr) and multiplies them for multi-year. The backend instead stores only the **discounted price** and **back-calculates MRP** using the plan discount percentage. This causes 1 rupee rounding differences.
 
-## Changes Per Page
+Example (Diamond, 3yr, Fresh):
+- Current tool: 3599 x 3 = **10,797**
+- Backend: (2599 x 3) / (1 - 0.2779) = 10,797.67 → **10,798**
 
-### 1. Plan List Page (`src/pages/PlanListValidation.tsx`)
+## Solution
+Remove hardcoded MRP values entirely. Back-calculate MRP from discounted prices, matching the backend formula. This is already done for Enterprise via `getEnterpriseMRP()` -- we just need to generalize it to all plans.
 
-**URL params to sync:** `platform`, `userType`, `currentPlan`, `currentDuration`, `startDate`, `currentBiz`, `currentUsers`
+## Technical Changes
 
-- Initialize all state from `useSearchParams` instead of hardcoded defaults
-- Add a `useEffect` that updates the URL (via `setSearchParams`) whenever any state value changes (using `replace: true` so it doesn't pollute browser history)
-- Add a "Copy Scenario" button in the header area
+### `src/lib/pricing-data.ts`
 
-### 2. Checkout Page (`src/pages/CheckoutCalculator.tsx`)
+1. **Remove `mrp` from `ANNUAL_PRICES`** -- only store `discounted` values
+2. **Back-calculate MRP everywhere** using: `Math.round(discounted / (1 - actualDiscountPercent / 100))`
+3. **Update `buildPlans()`** to compute `annualMRP` from discounted price instead of reading it
+4. **Update `buildMrpTable()`** to compute MRP per duration as `Math.round((discounted * years) / (1 - actualDiscountPercent / 100))` -- back-calculate from the total discounted amount for that duration, not per-year then multiply
+5. **Update `calculateBreakdown()`** -- the `originalPrice` should use this same back-calculation for all plans (not just Enterprise)
 
-**URL params to sync:** `plan`, `duration`, `coupon`, `userType`, `platform`, `currentPlan`, `startDate`, `currentDuration`, `currentBiz`, `currentUsers`, `purchaseType`, `oldDiscount`, `biz`, `users`
+### Key formula (applied per-plan, per-duration)
 
-- Already reads some params on init -- extend to read ALL state from params (duration, coupon, enterprise config, old discount toggle, purchase type, etc.)
-- Add a `useEffect` to write state back to URL on every change
-- Add a "Copy Scenario" button in the header
-
-### 3. PPD Calculator Page (`src/pages/PPDCalculator.tsx`)
-
-**URL params to sync:** `plan`, `startDate`, `duration`, `purchaseType`, `oldDiscount`, `biz`, `users`
-
-- Initialize all state from `useSearchParams`
-- Add a `useEffect` to sync state back to URL
-- Add a "Copy Scenario" button in the header
-
-### 4. Copy Scenario Button
-
-A small shared approach across all three pages:
-- Button with a clipboard/link icon and "Copy Scenario" label
-- On click: copies `window.location.href` to clipboard
-- Shows a sonner toast: "Scenario link copied!"
-
-## Technical Details
-
-### URL Sync Pattern (same on all pages)
-
-```typescript
-const [searchParams, setSearchParams] = useSearchParams();
-
-// Read initial state from params with fallbacks
-const [platform, setPlatform] = useState<Platform>(
-  (searchParams.get("platform") as Platform) === "web" ? "web" : "android"
-);
-
-// Sync state to URL
-useEffect(() => {
-  const params: Record<string, string> = {};
-  if (platform !== "android") params.platform = platform;
-  if (userType !== "fresh") params.userType = userType;
-  // ... only include non-default values to keep URLs clean
-  setSearchParams(params, { replace: true });
-}, [platform, userType, /* ...other deps */]);
+```text
+totalDiscounted = annualDiscounted * years
+originalPrice = Math.round(totalDiscounted / (1 - actualDiscountPercent / 100))
+planDiscountAmount = originalPrice - totalDiscounted
 ```
 
-### Copy Button
+This ensures Diamond 3yr = Math.round(7797 / 0.7221) = 10,798, matching the backend.
 
-```typescript
-import { toast } from "sonner";
-import { Link2 } from "lucide-react";
-
-<Button variant="outline" size="sm" onClick={() => {
-  navigator.clipboard.writeText(window.location.href);
-  toast("Scenario link copied!");
-}}>
-  <Link2 className="h-3.5 w-3.5" /> Copy Scenario
-</Button>
-```
-
-## Files Changed
+### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/pages/PlanListValidation.tsx` | Read/write all state to URL params, add Copy Scenario button |
-| `src/pages/CheckoutCalculator.tsx` | Extend URL param sync to all state, add Copy Scenario button |
-| `src/pages/PPDCalculator.tsx` | Read/write all state to URL params, add Copy Scenario button |
+| `src/lib/pricing-data.ts` | Remove hardcoded MRP, back-calculate from discounted price using actual discount percentages |
+
