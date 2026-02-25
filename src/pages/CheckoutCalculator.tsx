@@ -17,6 +17,8 @@ import {
   PLANS_BY_TYPE,
   DURATIONS,
   DURATION_YEARS,
+  MULTI_YEAR_DISCOUNTS,
+  OLD_MULTI_YEAR_DISCOUNTS,
   COUPON_OPTIONS,
   USER_TYPE_LABELS,
   PLAN_PLATFORM,
@@ -69,6 +71,8 @@ const CheckoutCalculator = () => {
   const [currentUserSlab, setCurrentUserSlab] = useState<EnterpriseUserSlab>(3);
   // Purchase type of the current plan (for PPD calculation)
   const [currentPlanPurchaseType, setCurrentPlanPurchaseType] = useState<UserType>("fresh");
+  // Old vs new multi-year discount for upgrade PPD
+  const [useOldMultiYearDiscount, setUseOldMultiYearDiscount] = useState(false);
 
   const isUpgrade = userType === "upgrade";
   const isEnterprise = plan === "enterprise";
@@ -94,8 +98,11 @@ const CheckoutCalculator = () => {
     && businesses === currentBusinesses && userSlab === currentUserSlab;
 
   // Calculate upgrade credit
+  const multiYearOverride = currentDuration !== "1yr" && useOldMultiYearDiscount
+    ? OLD_MULTI_YEAR_DISCOUNTS[currentDuration]
+    : undefined;
   const upgradeCreditResult = isUpgrade
-    ? calculateUpgradeCredit(currentPlan, currentDuration, new Date(startDate), isCurrentEnterprise ? currentEnterpriseAddon : 0, currentPlanPurchaseType)
+    ? calculateUpgradeCredit(currentPlan, currentDuration, new Date(startDate), isCurrentEnterprise ? currentEnterpriseAddon : 0, currentPlanPurchaseType, multiYearOverride)
     : null;
   const upgradeCredit = upgradeCreditResult?.credit ?? 0;
 
@@ -281,6 +288,37 @@ const CheckoutCalculator = () => {
                             {opt.label}
                           </label>
                         ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Old vs New multi-year discount toggle */}
+                  {currentDuration !== "1yr" && (
+                    <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Info className="h-3 w-3" />
+                        Multi-year discount slab used at purchase
+                      </Label>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="flex items-center gap-2 text-xs cursor-pointer">
+                          <input
+                            type="radio"
+                            name="multiYearDiscountSlab"
+                            checked={!useOldMultiYearDiscount}
+                            onChange={() => setUseOldMultiYearDiscount(false)}
+                            className="accent-amber-600"
+                          />
+                          New discount slabs ({MULTI_YEAR_DISCOUNTS[currentDuration]}%)
+                        </label>
+                        <label className="flex items-center gap-2 text-xs cursor-pointer">
+                          <input
+                            type="radio"
+                            name="multiYearDiscountSlab"
+                            checked={useOldMultiYearDiscount}
+                            onChange={() => setUseOldMultiYearDiscount(true)}
+                            className="accent-amber-600"
+                          />
+                          Old discount slabs ({OLD_MULTI_YEAR_DISCOUNTS[currentDuration]}%)
+                        </label>
                       </div>
                     </div>
                   )}
