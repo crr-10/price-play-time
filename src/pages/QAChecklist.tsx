@@ -289,6 +289,7 @@ const QAChecklist = () => {
                 ["ppd", "PPD Verification"],
                 ["ppd-calc", "PPD Calculator"],
                 ["enterprise", "Enterprise Config"],
+                ["upgrade-restrictions", "Upgrade Restrictions"],
                 ["platform", "Platform Filters"],
                 ["coupon", "Coupon Rules"],
                 ["edge", "Edge Cases"],
@@ -535,6 +536,89 @@ const QAChecklist = () => {
               </ul>
             </CardContent>
           </Card>
+        </Section>
+
+        {/* Upgrade Restrictions */}
+        <Section title="5b. Upgrade Restrictions (Duration, Business, Users)" id="upgrade-restrictions">
+          <p className="text-sm text-muted-foreground">
+            During upgrades, the checkout page restricts what the user can select based on their current plan's remaining time and enterprise config.
+          </p>
+          <Card className="rounded-xl">
+            <CardContent className="pt-4 pb-4 space-y-4">
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Duration Restriction</h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Users can only upgrade to a duration ≥ their current plan's remaining time (rounded up to the next year). This prevents negative/zero-price scenarios.
+                </p>
+                <div className="bg-muted rounded-lg p-3 font-mono text-xs space-y-1">
+                  <p>remainingDays = planEndDate − today</p>
+                  <p>minUpgradeYears = Math.max(1, Math.ceil(remainingDays / 365))</p>
+                  <p className="text-muted-foreground">// Only show durations where DURATION_YEARS[key] ≥ minUpgradeYears</p>
+                </div>
+                <Table className="mt-3">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Remaining Days</TableHead>
+                      <TableHead>Min Duration</TableHead>
+                      <TableHead>Allowed Selections</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[
+                      { range: "1–365", min: "1 year", allowed: "1yr, 2yr, 3yr, 5yr, 10yr" },
+                      { range: "366–730", min: "2 years", allowed: "2yr, 3yr, 5yr, 10yr" },
+                      { range: "731–1095", min: "3 years", allowed: "3yr, 5yr, 10yr" },
+                      { range: "1096–1825", min: "5 years", allowed: "5yr, 10yr" },
+                      { range: "1826–3650", min: "10 years", allowed: "10yr only" },
+                    ].map((row) => (
+                      <TableRow key={row.range}>
+                        <TableCell>{row.range}</TableCell>
+                        <TableCell className="font-medium">{row.min}</TableCell>
+                        <TableCell className="text-xs">{row.allowed}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="border-t pt-4">
+                <h4 className="font-semibold text-sm mb-2">Business & User Restrictions (Enterprise → Enterprise)</h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  When upgrading from Enterprise to Enterprise, the new configuration must be strictly greater — no downgrades allowed.
+                </p>
+                <ul className="space-y-2">
+                  <CheckItem><strong>Businesses</strong>: New businesses ≥ current businesses. The stepper's minimum is locked to the current count.</CheckItem>
+                  <CheckItem><strong>Users</strong>: New user slab ≥ current user slab. The stepper's minimum is locked to the current slab.</CheckItem>
+                  <CheckItem><strong>Same config</strong>: If new biz = current biz AND new users = current users, it's treated as "No Upgrade Selected" — the price breakdown is hidden.</CheckItem>
+                  <CheckItem><strong>Contact Sales</strong>: 6+ businesses or 16+ users → price breakdown is replaced with a "Contact Sales" prompt.</CheckItem>
+                </ul>
+              </div>
+              <div className="border-t pt-4">
+                <h4 className="font-semibold text-sm mb-2">Plan List Page (Expiry Banner)</h4>
+                <ul className="space-y-2">
+                  <CheckItem>In upgrade mode, a banner shows: <strong>"Your [Plan] plan expires on [dd MMM yyyy]"</strong> above the plan cards.</CheckItem>
+                  <CheckItem>Only plans higher than the current plan are shown (e.g., Diamond user sees Platinum &amp; Enterprise only).</CheckItem>
+                  <CheckItem>Current plan is shown as a greyed-out card with "Current Plan" badge.</CheckItem>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+          <div className="flex gap-2 flex-wrap">
+            <Link to={`/calculator?userType=upgrade&currentPlan=platinum&currentDuration=2yr&startDate=${format(subDays(new Date(), 100), "yyyy-MM-dd")}&plan=enterprise`}>
+              <Button variant="outline" size="sm" className="text-xs gap-1">
+                Test: Platinum 2yr → Enterprise (min 1yr) <ExternalLink className="h-3 w-3" />
+              </Button>
+            </Link>
+            <Link to={`/calculator?userType=upgrade&currentPlan=diamond&currentDuration=3yr&startDate=${format(subDays(new Date(), 30), "yyyy-MM-dd")}&plan=platinum`}>
+              <Button variant="outline" size="sm" className="text-xs gap-1">
+                Test: Diamond 3yr → Platinum (min 3yr) <ExternalLink className="h-3 w-3" />
+              </Button>
+            </Link>
+            <Link to={`/?userType=upgrade&currentPlan=diamond&currentDuration=2yr&startDate=${format(subDays(new Date(), 60), "yyyy-MM-dd")}`}>
+              <Button variant="outline" size="sm" className="text-xs gap-1">
+                Test: Plan List expiry banner <ExternalLink className="h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
         </Section>
 
         {/* Section 6 */}
