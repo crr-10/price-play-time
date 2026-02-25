@@ -441,7 +441,7 @@ const CheckoutCalculator = () => {
                 {/* Multi-year banner */}
                 {duration === "1yr" && (
                   <div className="bg-emerald-50 text-emerald-700 text-xs rounded-md px-3 py-2 text-center">
-                    💡 Buy 2, 3, 5 or 10 year plan to get upto 30% extra off
+                    💡 Buy a multi-year plan (2–10 years) to get up to 30% extra off
                   </div>
                 )}
                 {duration !== "1yr" && (
