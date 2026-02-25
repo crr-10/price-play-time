@@ -1,32 +1,83 @@
 
+# Shareable URLs with "Copy Scenario" Button
 
-# Update QA Checklist with Old/New Discount Slabs and PPD Enhancements
+## Overview
 
-## Changes to `src/pages/QAChecklist.tsx`
+Make every page's state fully driven by URL search params so any scenario can be shared via link. Add a "Copy Scenario" button on each page that copies the current URL to clipboard with a toast confirmation.
 
-### 1. Multi-Year Discount Table (Section 1) -- Add Old Discount Column
-Currently only shows the new discount slabs. Add a side-by-side comparison:
-- Add `OLD_MULTI_YEAR_DISCOUNTS` import
-- Add a third column "Old Discount" to the `MultiYearDiscountTable` showing the legacy slab values next to the new ones
+## Changes Per Page
 
-### 2. PPD Scenarios (Section 4) -- Expand with Old Discount and Purchase Type Cases
-Currently has 3 basic scenarios. Add:
-- A scenario using **old multi-year discount** (e.g., "Diamond 3yr, old discount (20%), 100 days ago") by passing `multiYearDiscountOverride` to `calculateUpgradeCredit`
-- A scenario with **Platinum + renewal_after purchase type** to show cohort-dependent pricing
-- A scenario with **Enterprise + addon** to cover addon-inclusive PPD
+### 1. Plan List Page (`src/pages/PlanListValidation.tsx`)
 
-### 3. Upgrade Rules (Section 5) -- Add Old vs New Discount Note
-Add a `CheckItem` documenting:
-- The old/new multi-year discount toggle exists on both the Checkout page and the standalone PPD Calculator
-- Old slabs apply to plans purchased before the discount reduction
+**URL params to sync:** `platform`, `userType`, `currentPlan`, `currentDuration`, `startDate`, `currentBiz`, `currentUsers`
 
-### 4. Add PPD Calculator Link
-- Add a link/button to the standalone `/ppd-calculator` page in the PPD section description, similar to how checkout scenarios link to `/calculator`
-- Add "PPD Calculator" to the TOC jump links
+- Initialize all state from `useSearchParams` instead of hardcoded defaults
+- Add a `useEffect` that updates the URL (via `setSearchParams`) whenever any state value changes (using `replace: true` so it doesn't pollute browser history)
+- Add a "Copy Scenario" button in the header area
 
-### Files Changed
+### 2. Checkout Page (`src/pages/CheckoutCalculator.tsx`)
+
+**URL params to sync:** `plan`, `duration`, `coupon`, `userType`, `platform`, `currentPlan`, `startDate`, `currentDuration`, `currentBiz`, `currentUsers`, `purchaseType`, `oldDiscount`, `biz`, `users`
+
+- Already reads some params on init -- extend to read ALL state from params (duration, coupon, enterprise config, old discount toggle, purchase type, etc.)
+- Add a `useEffect` to write state back to URL on every change
+- Add a "Copy Scenario" button in the header
+
+### 3. PPD Calculator Page (`src/pages/PPDCalculator.tsx`)
+
+**URL params to sync:** `plan`, `startDate`, `duration`, `purchaseType`, `oldDiscount`, `biz`, `users`
+
+- Initialize all state from `useSearchParams`
+- Add a `useEffect` to sync state back to URL
+- Add a "Copy Scenario" button in the header
+
+### 4. Copy Scenario Button
+
+A small shared approach across all three pages:
+- Button with a clipboard/link icon and "Copy Scenario" label
+- On click: copies `window.location.href` to clipboard
+- Shows a sonner toast: "Scenario link copied!"
+
+## Technical Details
+
+### URL Sync Pattern (same on all pages)
+
+```typescript
+const [searchParams, setSearchParams] = useSearchParams();
+
+// Read initial state from params with fallbacks
+const [platform, setPlatform] = useState<Platform>(
+  (searchParams.get("platform") as Platform) === "web" ? "web" : "android"
+);
+
+// Sync state to URL
+useEffect(() => {
+  const params: Record<string, string> = {};
+  if (platform !== "android") params.platform = platform;
+  if (userType !== "fresh") params.userType = userType;
+  // ... only include non-default values to keep URLs clean
+  setSearchParams(params, { replace: true });
+}, [platform, userType, /* ...other deps */]);
+```
+
+### Copy Button
+
+```typescript
+import { toast } from "sonner";
+import { Link2 } from "lucide-react";
+
+<Button variant="outline" size="sm" onClick={() => {
+  navigator.clipboard.writeText(window.location.href);
+  toast("Scenario link copied!");
+}}>
+  <Link2 className="h-3.5 w-3.5" /> Copy Scenario
+</Button>
+```
+
+## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/pages/QAChecklist.tsx` | Add old discount column, expand PPD scenarios, add upgrade rule note, add PPD Calculator link |
-
+| `src/pages/PlanListValidation.tsx` | Read/write all state to URL params, add Copy Scenario button |
+| `src/pages/CheckoutCalculator.tsx` | Extend URL param sync to all state, add Copy Scenario button |
+| `src/pages/PPDCalculator.tsx` | Read/write all state to URL params, add Copy Scenario button |
