@@ -30,38 +30,28 @@ const PLAN_META: { name: string; key: PlanName; discountPercent: number; actualD
   { name: "Enterprise", key: "enterprise", discountPercent: 44, actualDiscountPercent: 44.45 },
 ];
 
-const ANNUAL_PRICES: Record<string, Record<PlanName, { mrp: number; discounted: number }>> = {
-  fresh: {
-    silver: { mrp: 549, discounted: 399 },
-    diamond: { mrp: 3599, discounted: 2599 },
-    platinum: { mrp: 5999, discounted: 2999 },
-    enterprise: { mrp: 8999, discounted: 4999 },
-  },
-  renewal_after: {
-    silver: { mrp: 549, discounted: 399 },
-    diamond: { mrp: 3599, discounted: 2599 },
-    platinum: { mrp: 8000, discounted: 3999 },
-    enterprise: { mrp: 10799, discounted: 5999 },
-  },
-  renewal_before: {
-    silver: { mrp: 549, discounted: 399 },
-    diamond: { mrp: 3599, discounted: 2599 },
-    platinum: { mrp: 12000, discounted: 5999 },
-    enterprise: { mrp: 16199, discounted: 8999 },
-  },
+const ANNUAL_PRICES: Record<string, Record<PlanName, number>> = {
+  fresh: { silver: 399, diamond: 2599, platinum: 2999, enterprise: 4999 },
+  renewal_after: { silver: 399, diamond: 2599, platinum: 3999, enterprise: 5999 },
+  renewal_before: { silver: 399, diamond: 2599, platinum: 5999, enterprise: 8999 },
 };
 // Upgrade uses same pricing as renewal_after
 ANNUAL_PRICES.upgrade = ANNUAL_PRICES.renewal_after;
 
+function backCalculateMRP(discounted: number, actualDiscountPercent: number): number {
+  return Math.round(discounted / (1 - actualDiscountPercent / 100));
+}
+
 function buildPlans(userType: UserType): PlanInfo[] {
   return PLAN_META.map((meta) => {
-    const prices = ANNUAL_PRICES[userType][meta.key];
+    const discounted = ANNUAL_PRICES[userType][meta.key];
+    const mrp = backCalculateMRP(discounted, meta.actualDiscountPercent);
     return {
       ...meta,
-      annualMRP: prices.mrp,
-      annualDiscounted: prices.discounted,
-      monthlyMRP: Math.round(prices.mrp / 12),
-      monthlyDiscounted: Math.round(prices.discounted / 12),
+      annualMRP: mrp,
+      annualDiscounted: discounted,
+      monthlyMRP: Math.round(mrp / 12),
+      monthlyDiscounted: Math.round(discounted / 12),
     };
   });
 }
@@ -81,11 +71,11 @@ function buildMrpTable(userType: UserType): Record<PlanName, Record<Duration, nu
   const durations: Duration[] = ["1yr", "2yr", "3yr", "4yr", "5yr", "6yr", "7yr", "8yr", "9yr", "10yr"];
   const years = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const result = {} as Record<PlanName, Record<Duration, number>>;
-  for (const plan of ["silver", "diamond", "platinum", "enterprise"] as PlanName[]) {
-    result[plan] = {} as Record<Duration, number>;
-    const annualMrp = ANNUAL_PRICES[userType][plan].mrp;
+  for (const meta of PLAN_META) {
+    result[meta.key] = {} as Record<Duration, number>;
+    const annualDiscounted = ANNUAL_PRICES[userType][meta.key];
     durations.forEach((d, i) => {
-      result[plan][d] = annualMrp * years[i];
+      result[meta.key][d] = backCalculateMRP(annualDiscounted * years[i], meta.actualDiscountPercent);
     });
   }
   return result;
@@ -275,7 +265,7 @@ export function calculateBreakdown(
   const baseAnnualDiscounted = ANNUAL_DISCOUNTED[userType][plan];
   const annualDiscounted = baseAnnualDiscounted + (plan === "enterprise" ? enterpriseAddon : 0);
   const originalPrice = plan === "enterprise"
-    ? getEnterpriseMRP(annualDiscounted) * years
+    ? backCalculateMRP(annualDiscounted * years, ACTUAL_PLAN_DISCOUNTS[plan])
     : MRP_TABLES[userType][plan][duration];
   const priceAfterPlanDiscount = annualDiscounted * years;
   const planDiscountAmount = originalPrice - priceAfterPlanDiscount;
