@@ -10,7 +10,7 @@ import { ArrowLeft, ExternalLink, CheckCircle2, AlertTriangle } from "lucide-rea
 import { format, subDays } from "date-fns";
 import {
   type PlanName, type UserType, type Duration,
-  PLANS_BY_TYPE, DURATIONS, DURATION_YEARS, MULTI_YEAR_DISCOUNTS,
+  PLANS_BY_TYPE, DURATIONS, DURATION_YEARS, MULTI_YEAR_DISCOUNTS, OLD_MULTI_YEAR_DISCOUNTS,
   PLAN_DISCOUNTS, ACTUAL_PLAN_DISCOUNTS, MRP_TABLES,
   ANNUAL_DISCOUNTED, USER_TYPE_LABELS,
   ENTERPRISE_BASE, ENTERPRISE_EXTRA_BUSINESS_COST, ENTERPRISE_USER_SLAB_COSTS,
@@ -42,7 +42,8 @@ const MultiYearDiscountTable = () => (
     <TableHeader>
       <TableRow>
         <TableHead>Tenure</TableHead>
-        <TableHead>Expected Discount</TableHead>
+        <TableHead>New Discount</TableHead>
+        <TableHead>Old Discount</TableHead>
       </TableRow>
     </TableHeader>
     <TableBody>
@@ -54,6 +55,13 @@ const MultiYearDiscountTable = () => (
               <span className="text-muted-foreground">0% (base)</span>
             ) : (
               <Badge variant="secondary">{MULTI_YEAR_DISCOUNTS[d.key]}% extra off</Badge>
+            )}
+          </TableCell>
+          <TableCell>
+            {OLD_MULTI_YEAR_DISCOUNTS[d.key] === 0 ? (
+              <span className="text-muted-foreground">0% (base)</span>
+            ) : (
+              <Badge variant="outline">{OLD_MULTI_YEAR_DISCOUNTS[d.key]}% extra off</Badge>
             )}
           </TableCell>
         </TableRow>
@@ -206,17 +214,23 @@ interface PPDScenario {
   plan: PlanName;
   duration: Duration;
   daysAgo: number;
+  purchaseType?: UserType;
+  multiYearDiscountOverride?: number;
+  enterpriseAddon?: number;
 }
 
 const PPD_SCENARIOS: PPDScenario[] = [
   { label: "Diamond 1yr, started 100 days ago", plan: "diamond", duration: "1yr", daysAgo: 100 },
   { label: "Diamond 2yr (5% multi-year), 200 days ago", plan: "diamond", duration: "2yr", daysAgo: 200 },
   { label: "Platinum 3yr (10% discount), 50 days ago", plan: "platinum", duration: "3yr", daysAgo: 50 },
+  { label: "Diamond 3yr, OLD discount (20%), 100 days ago", plan: "diamond", duration: "3yr", daysAgo: 100, multiYearDiscountOverride: OLD_MULTI_YEAR_DISCOUNTS["3yr"] },
+  { label: "Platinum 2yr, renewal_after, 150 days ago", plan: "platinum", duration: "2yr", daysAgo: 150, purchaseType: "renewal_after" },
+  { label: "Enterprise 1yr + addon (₹2k biz + ₹2k users), 90 days ago", plan: "enterprise", duration: "1yr", daysAgo: 90, enterpriseAddon: 4000 },
 ];
 
 const PPDCard = ({ s }: { s: PPDScenario }) => {
   const startDate = subDays(new Date(), s.daysAgo);
-  const r = calculateUpgradeCredit(s.plan, s.duration, startDate);
+  const r = calculateUpgradeCredit(s.plan, s.duration, startDate, s.enterpriseAddon ?? 0, s.purchaseType ?? "fresh", s.multiYearDiscountOverride);
   return (
     <Card className="rounded-xl">
       <CardContent className="pt-4 pb-4">
@@ -272,6 +286,7 @@ const QAChecklist = () => {
                 ["mrp", "MRP & Discount %"],
                 ["checkout", "Checkout Scenarios"],
                 ["ppd", "PPD Verification"],
+                ["ppd-calc", "PPD Calculator"],
                 ["enterprise", "Enterprise Config"],
                 ["platform", "Platform Filters"],
                 ["coupon", "Coupon Rules"],
@@ -323,10 +338,17 @@ const QAChecklist = () => {
 
         {/* Section 4 */}
         <Section title="4. Upgrade Credit (PPD) Verification" id="ppd">
-          <p className="text-sm text-muted-foreground">
-            Verify the PPD calculation by expanding the "Credit Calculation" section on the checkout page for upgrade users.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Verify the PPD calculation by expanding the "Credit Calculation" section on the checkout page for upgrade users.
+            </p>
+            <Link to="/ppd-calculator">
+              <Button variant="outline" size="sm" className="text-xs gap-1 shrink-0">
+                PPD Calculator <ExternalLink className="h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {PPD_SCENARIOS.map((s, i) => (
               <PPDCard key={i} s={s} />
             ))}
@@ -434,6 +456,9 @@ const QAChecklist = () => {
                 <CheckItem>Cannot downgrade: new biz ≥ current biz, new users ≥ current users</CheckItem>
                 <CheckItem>Enterprise current plan credit includes addon costs in PPD calculation</CheckItem>
                 <CheckItem>6+ businesses or 16+ users → "Contact Sales" replaces price breakdown</CheckItem>
+                <CheckItem>
+                  <strong>Old vs New multi-year discount toggle</strong>: Available on both the Checkout page and the standalone PPD Calculator (for durations &gt; 1yr). Old slabs apply to plans purchased before the discount reduction.
+                </CheckItem>
                 <CheckItem>
                   <strong>PPD purchase type</strong>: For Platinum/Enterprise upgrades, the credit varies based on how the current plan was purchased.
                   Platinum Fresh = {formatINR(ANNUAL_DISCOUNTED.fresh.platinum)}/yr vs Renewal After = {formatINR(ANNUAL_DISCOUNTED.renewal_after.platinum)}/yr.
