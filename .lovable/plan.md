@@ -1,40 +1,32 @@
 
 
-# Standalone PPD Calculator Page
+# Update QA Checklist with Old/New Discount Slabs and PPD Enhancements
 
-## What Changes
+## Changes to `src/pages/QAChecklist.tsx`
 
-Extract the "Current Plan Details" card (with all its selectors and PPD breakdown) into a dedicated page at `/ppd-calculator`, accessible from the home page. This makes it easy to quickly calculate upgrade credits without navigating through the full checkout flow.
+### 1. Multi-Year Discount Table (Section 1) -- Add Old Discount Column
+Currently only shows the new discount slabs. Add a side-by-side comparison:
+- Add `OLD_MULTI_YEAR_DISCOUNTS` import
+- Add a third column "Old Discount" to the `MultiYearDiscountTable` showing the legacy slab values next to the new ones
 
-## Details
+### 2. PPD Scenarios (Section 4) -- Expand with Old Discount and Purchase Type Cases
+Currently has 3 basic scenarios. Add:
+- A scenario using **old multi-year discount** (e.g., "Diamond 3yr, old discount (20%), 100 days ago") by passing `multiYearDiscountOverride` to `calculateUpgradeCredit`
+- A scenario with **Platinum + renewal_after purchase type** to show cohort-dependent pricing
+- A scenario with **Enterprise + addon** to cover addon-inclusive PPD
 
-### New file: `src/pages/PPDCalculator.tsx`
+### 3. Upgrade Rules (Section 5) -- Add Old vs New Discount Note
+Add a `CheckItem` documenting:
+- The old/new multi-year discount toggle exists on both the Checkout page and the standalone PPD Calculator
+- Old slabs apply to plans purchased before the discount reduction
 
-A standalone page containing the full "Current Plan Details" card from the checkout page. It will include:
-- Current Plan selector (Silver/Diamond/Platinum/Enterprise)
-- Plan Start Date picker
-- Plan Duration selector (1-10 years)
-- Purchase Type radio (for Platinum/Enterprise)
-- Old vs New multi-year discount toggle (for duration > 1yr)
-- Enterprise business/user steppers (for Enterprise)
-- Plan end date and credit display
-- PPD Breakdown collapsible (open by default on this page)
-- Back button to home
+### 4. Add PPD Calculator Link
+- Add a link/button to the standalone `/ppd-calculator` page in the PPD section description, similar to how checkout scenarios link to `/calculator`
+- Add "PPD Calculator" to the TOC jump links
 
-The component will be self-contained, reusing the same state logic and calculations currently in CheckoutCalculator but focused solely on PPD credit calculation.
-
-### `src/App.tsx`
-
-Add route: `<Route path="/ppd-calculator" element={<PPDCalculator />} />`
-
-### `src/pages/PlanListValidation.tsx` (home page)
-
-Add a navigation card/button linking to `/ppd-calculator` alongside the existing checkout and QA links.
-
-## Files Changed
+### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/pages/PPDCalculator.tsx` | New standalone PPD calculator page |
-| `src/App.tsx` | Add `/ppd-calculator` route |
-| `src/pages/PlanListValidation.tsx` | Add entry point link to PPD calculator |
+| `src/pages/QAChecklist.tsx` | Add old discount column, expand PPD scenarios, add upgrade rule note, add PPD Calculator link |
+
