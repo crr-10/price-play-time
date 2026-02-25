@@ -9,7 +9,7 @@ export const PLAN_PLATFORM: Record<PlanName, Platform[]> = {
   platinum: ["android", "web"],
   enterprise: ["android", "web"],
 };
-export type Duration = "1yr" | "2yr" | "3yr" | "5yr" | "10yr";
+export type Duration = "1yr" | "2yr" | "3yr" | "4yr" | "5yr" | "6yr" | "7yr" | "8yr" | "9yr" | "10yr";
 export type UserType = "fresh" | "renewal_after" | "renewal_before" | "upgrade";
 
 export interface PlanInfo {
@@ -78,8 +78,8 @@ export const PLANS = PLANS_BY_TYPE.fresh;
 
 // MRP tables per user type (multi-year = annual MRP × years)
 function buildMrpTable(userType: UserType): Record<PlanName, Record<Duration, number>> {
-  const durations: Duration[] = ["1yr", "2yr", "3yr", "5yr", "10yr"];
-  const years = [1, 2, 3, 5, 10];
+  const durations: Duration[] = ["1yr", "2yr", "3yr", "4yr", "5yr", "6yr", "7yr", "8yr", "9yr", "10yr"];
+  const years = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const result = {} as Record<PlanName, Record<Duration, number>>;
   for (const plan of ["silver", "diamond", "platinum", "enterprise"] as PlanName[]) {
     result[plan] = {} as Record<Duration, number>;
@@ -110,7 +110,7 @@ export const ANNUAL_DISCOUNTED: Record<UserType, Record<PlanName, number>> = {
 };
 
 export const DURATION_YEARS: Record<Duration, number> = {
-  "1yr": 1, "2yr": 2, "3yr": 3, "5yr": 5, "10yr": 10,
+  "1yr": 1, "2yr": 2, "3yr": 3, "4yr": 4, "5yr": 5, "6yr": 6, "7yr": 7, "8yr": 8, "9yr": 9, "10yr": 10,
 };
 
 export const PLAN_DISCOUNTS: Record<PlanName, number> = {
@@ -122,14 +122,19 @@ export const ACTUAL_PLAN_DISCOUNTS: Record<PlanName, number> = {
 };
 
 export const MULTI_YEAR_DISCOUNTS: Record<Duration, number> = {
-  "1yr": 0, "2yr": 5, "3yr": 10, "5yr": 15, "10yr": 30,
+  "1yr": 0, "2yr": 5, "3yr": 10, "4yr": 10, "5yr": 15, "6yr": 15, "7yr": 25, "8yr": 25, "9yr": 25, "10yr": 30,
 };
 
 export const DURATIONS: { key: Duration; label: string; extraOff: string }[] = [
   { key: "1yr", label: "1 Year", extraOff: "" },
   { key: "2yr", label: "2 Years", extraOff: "5% extra off" },
   { key: "3yr", label: "3 Years", extraOff: "10% extra off" },
+  { key: "4yr", label: "4 Years", extraOff: "10% extra off" },
   { key: "5yr", label: "5 Years", extraOff: "15% extra off" },
+  { key: "6yr", label: "6 Years", extraOff: "15% extra off" },
+  { key: "7yr", label: "7 Years", extraOff: "25% extra off" },
+  { key: "8yr", label: "8 Years", extraOff: "25% extra off" },
+  { key: "9yr", label: "9 Years", extraOff: "25% extra off" },
   { key: "10yr", label: "10 Years", extraOff: "30% extra off" },
 ];
 
