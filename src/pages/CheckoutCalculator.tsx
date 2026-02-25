@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Plus, Minus, Phone, Info } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Plus, Minus, Phone, Info, Link2 } from "lucide-react";
 import { format, addDays } from "date-fns";
+import { toast } from "sonner";
 import {
   type PlanName,
   type Duration,
@@ -37,30 +38,43 @@ const USER_TYPES: UserType[] = ["fresh", "renewal_after", "renewal_before", "upg
 const PLAN_ORDER: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
 
 const CheckoutCalculator = () => {
-  const [searchParams] = useSearchParams();
-  const initialPlan = (searchParams.get("plan") as PlanName) || "platinum";
-  const rawUserType = searchParams.get("userType");
-  const initialUserType: UserType = rawUserType === "renewal_after" || rawUserType === "renewal_before" || rawUserType === "fresh" || rawUserType === "upgrade" ? rawUserType : "fresh";
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [plan, setPlan] = useState<PlanName>(initialPlan);
-  const [duration, setDuration] = useState<Duration>("1yr");
-  const [coupon, setCoupon] = useState<number>(0);
+  // Initialize ALL state from URL params
+  const [plan, setPlan] = useState<PlanName>(
+    (["silver", "diamond", "platinum", "enterprise"].includes(searchParams.get("plan") || "")
+      ? searchParams.get("plan") as PlanName : "platinum")
+  );
+  const [duration, setDuration] = useState<Duration>(
+    (searchParams.get("duration") as Duration) || "1yr"
+  );
+  const [coupon, setCoupon] = useState<number>(
+    Number(searchParams.get("coupon")) || 0
+  );
   const [customCoupon, setCustomCoupon] = useState<string>("");
   const [useCustomCoupon, setUseCustomCoupon] = useState(false);
-  const [userType, setUserType] = useState<UserType>(initialUserType);
+  const [userType, setUserType] = useState<UserType>(
+    (["fresh", "renewal_after", "renewal_before", "upgrade"].includes(searchParams.get("userType") || "")
+      ? searchParams.get("userType") as UserType : "fresh")
+  );
   const [discountOpen, setDiscountOpen] = useState(false);
   const [ppdOpen, setPpdOpen] = useState(false);
   const [platform, setPlatform] = useState<Platform>(
-    (searchParams.get("platform") as Platform) === "web" ? "web" : "android"
+    searchParams.get("platform") === "web" ? "web" : "android"
   );
 
   // Enterprise customization
-  const [businesses, setBusinesses] = useState<number>(ENTERPRISE_BASE.businesses);
-  const [userSlab, setUserSlab] = useState<EnterpriseUserSlab>(3);
+  const [businesses, setBusinesses] = useState<number>(
+    Number(searchParams.get("biz")) || ENTERPRISE_BASE.businesses
+  );
+  const [userSlab, setUserSlab] = useState<EnterpriseUserSlab>(
+    (Number(searchParams.get("users")) || 3) as EnterpriseUserSlab
+  );
 
   // Upgrade-specific state
   const [currentPlan, setCurrentPlan] = useState<PlanName>(
-    (searchParams.get("currentPlan") as PlanName) || "diamond"
+    (["silver", "diamond", "platinum", "enterprise"].includes(searchParams.get("currentPlan") || "")
+      ? searchParams.get("currentPlan") as PlanName : "diamond")
   );
   const [startDate, setStartDate] = useState<string>(
     searchParams.get("startDate") || format(new Date(), "yyyy-MM-dd")
@@ -68,13 +82,46 @@ const CheckoutCalculator = () => {
   const [currentDuration, setCurrentDuration] = useState<Duration>(
     (searchParams.get("currentDuration") as Duration) || "1yr"
   );
-  // Current enterprise config for enterprise-to-enterprise upgrades
-  const [currentBusinesses, setCurrentBusinesses] = useState<number>(ENTERPRISE_BASE.businesses);
-  const [currentUserSlab, setCurrentUserSlab] = useState<EnterpriseUserSlab>(3);
-  // Purchase type of the current plan (for PPD calculation)
-  const [currentPlanPurchaseType, setCurrentPlanPurchaseType] = useState<UserType>("fresh");
-  // Old vs new multi-year discount for upgrade PPD
-  const [useOldMultiYearDiscount, setUseOldMultiYearDiscount] = useState(false);
+  const [currentBusinesses, setCurrentBusinesses] = useState<number>(
+    Number(searchParams.get("currentBiz")) || ENTERPRISE_BASE.businesses
+  );
+  const [currentUserSlab, setCurrentUserSlab] = useState<EnterpriseUserSlab>(
+    (Number(searchParams.get("currentUsers")) || 3) as EnterpriseUserSlab
+  );
+  const [currentPlanPurchaseType, setCurrentPlanPurchaseType] = useState<UserType>(
+    (["fresh", "renewal_after", "renewal_before"].includes(searchParams.get("purchaseType") || "")
+      ? searchParams.get("purchaseType") as UserType : "fresh")
+  );
+  const [useOldMultiYearDiscount, setUseOldMultiYearDiscount] = useState(
+    searchParams.get("oldDiscount") === "1"
+  );
+
+  // Sync state to URL
+  useEffect(() => {
+    const params: Record<string, string> = {};
+    if (plan !== "platinum") params.plan = plan;
+    if (duration !== "1yr") params.duration = duration;
+    if (platform !== "android") params.platform = platform;
+    if (userType !== "fresh") params.userType = userType;
+    const effectiveCouponVal = useCustomCoupon ? Math.min(100, Math.max(0, Number(customCoupon) || 0)) : coupon;
+    if (effectiveCouponVal > 0) params.coupon = String(effectiveCouponVal);
+    if (plan === "enterprise") {
+      if (businesses !== ENTERPRISE_BASE.businesses) params.biz = String(businesses);
+      if (userSlab !== 3) params.users = String(userSlab);
+    }
+    if (userType === "upgrade") {
+      if (currentPlan !== "diamond") params.currentPlan = currentPlan;
+      if (currentDuration !== "1yr") params.currentDuration = currentDuration;
+      if (startDate !== format(new Date(), "yyyy-MM-dd")) params.startDate = startDate;
+      if (currentPlanPurchaseType !== "fresh") params.purchaseType = currentPlanPurchaseType;
+      if (useOldMultiYearDiscount) params.oldDiscount = "1";
+      if (currentPlan === "enterprise") {
+        if (currentBusinesses !== ENTERPRISE_BASE.businesses) params.currentBiz = String(currentBusinesses);
+        if (currentUserSlab !== 3) params.currentUsers = String(currentUserSlab);
+      }
+    }
+    setSearchParams(params, { replace: true });
+  }, [plan, duration, platform, userType, coupon, customCoupon, useCustomCoupon, businesses, userSlab, currentPlan, startDate, currentDuration, currentBusinesses, currentUserSlab, currentPlanPurchaseType, useOldMultiYearDiscount]);
 
   const isUpgrade = userType === "upgrade";
   const isEnterprise = plan === "enterprise";
@@ -118,8 +165,7 @@ const CheckoutCalculator = () => {
     }
   }, [platform, plan]);
 
-  // Enforce upgrade constraints: new plan > current plan (or enterprise-to-enterprise)
-  // For enterprise-to-enterprise: new biz/users >= current
+  // Enforce upgrade constraints
   const minBusinesses = isUpgrade && isCurrentEnterprise && isEnterprise ? currentBusinesses : ENTERPRISE_BASE.businesses;
   const minUserSlabIdx = isUpgrade && isCurrentEnterprise && isEnterprise
     ? ENTERPRISE_USER_STEPS.indexOf(currentUserSlab)
@@ -147,11 +193,11 @@ const CheckoutCalculator = () => {
 
   // Business stepper
   const canDecBiz = businesses > minBusinesses;
-  const canIncBiz = businesses <= ENTERPRISE_MAX_BUSINESSES; // allow going to 6 to show contact sales
+  const canIncBiz = businesses <= ENTERPRISE_MAX_BUSINESSES;
   const decBiz = () => { if (canDecBiz) setBusinesses(businesses - 1); };
   const incBiz = () => { if (canIncBiz) setBusinesses(businesses + 1); };
 
-  // Filter plans for upgrade: only higher plans or same enterprise
+  // Filter plans for upgrade
   const getAvailablePlans = () => {
     if (!isUpgrade) return platformPlans;
     return platformPlans.filter((p) => {
@@ -180,6 +226,12 @@ const CheckoutCalculator = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              toast("Scenario link copied!");
+            }}>
+              <Link2 className="h-3.5 w-3.5" /> Copy Scenario
+            </Button>
             <div className="flex items-center gap-1.5">
               <Label className="text-xs">Platform:</Label>
               <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
