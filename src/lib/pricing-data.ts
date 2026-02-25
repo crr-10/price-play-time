@@ -126,7 +126,7 @@ export const MULTI_YEAR_DISCOUNTS: Record<Duration, number> = {
 };
 
 export const OLD_MULTI_YEAR_DISCOUNTS: Record<Duration, number> = {
-  "1yr": 0, "2yr": 15, "3yr": 20, "4yr": 20, "5yr": 25, "6yr": 25, "7yr": 35, "8yr": 35, "9yr": 35, "10yr": 40,
+  "1yr": 0, "2yr": 15, "3yr": 20, "4yr": 20, "5yr": 30, "6yr": 30, "7yr": 35, "8yr": 35, "9yr": 35, "10yr": 40,
 };
 
 export const DURATIONS: { key: Duration; label: string; extraOff: string }[] = [
