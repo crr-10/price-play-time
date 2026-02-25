@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { PLANS_BY_TYPE, USER_TYPE_LABELS, DURATIONS, DURATION_YEARS, calculateUpgradeCredit, formatINR, PLAN_PLATFORM, ENTERPRISE_BASE, ENTERPRISE_MAX_BUSINESSES, ENTERPRISE_USER_STEPS, getEnterpriseUserSlabLabel, type UserType, type PlanName, type Duration, type Platform, type EnterpriseUserSlab } from "@/lib/pricing-data";
-import { Crown, AlertCircle, Plus, Minus } from "lucide-react";
+import { Crown, AlertCircle, Plus, Minus, Link2 } from "lucide-react";
 import { format, addDays } from "date-fns";
+import { toast } from "sonner";
 
 const PLAN_BORDERS: Record<PlanName, string> = {
   silver: "border-t-4 border-t-amber-400",
@@ -36,14 +37,50 @@ const PLAN_ORDER: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
 const USER_TYPES: UserType[] = ["fresh", "renewal_after", "renewal_before", "upgrade"];
 
 const PlanListValidation = () => {
-  const [userType, setUserType] = useState<UserType>("fresh");
-  const [platform, setPlatform] = useState<Platform>("android");
-  const [currentPlan, setCurrentPlan] = useState<PlanName>("diamond");
-  const [currentDuration, setCurrentDuration] = useState<Duration>("1yr");
-  const [startDate, setStartDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
-  const [currentBusinesses, setCurrentBusinesses] = useState<number>(ENTERPRISE_BASE.businesses);
-  const [currentUserSlab, setCurrentUserSlab] = useState<EnterpriseUserSlab>(3);
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  // Initialize state from URL params with defaults
+  const [userType, setUserType] = useState<UserType>(
+    (["fresh", "renewal_after", "renewal_before", "upgrade"].includes(searchParams.get("userType") || "") 
+      ? searchParams.get("userType") as UserType : "fresh")
+  );
+  const [platform, setPlatform] = useState<Platform>(
+    searchParams.get("platform") === "web" ? "web" : "android"
+  );
+  const [currentPlan, setCurrentPlan] = useState<PlanName>(
+    (["silver", "diamond", "platinum", "enterprise"].includes(searchParams.get("currentPlan") || "")
+      ? searchParams.get("currentPlan") as PlanName : "diamond")
+  );
+  const [currentDuration, setCurrentDuration] = useState<Duration>(
+    (searchParams.get("currentDuration") as Duration) || "1yr"
+  );
+  const [startDate, setStartDate] = useState<string>(
+    searchParams.get("startDate") || format(new Date(), "yyyy-MM-dd")
+  );
+  const [currentBusinesses, setCurrentBusinesses] = useState<number>(
+    Number(searchParams.get("currentBiz")) || ENTERPRISE_BASE.businesses
+  );
+  const [currentUserSlab, setCurrentUserSlab] = useState<EnterpriseUserSlab>(
+    (Number(searchParams.get("currentUsers")) || 3) as EnterpriseUserSlab
+  );
+
+  // Sync state to URL
+  useEffect(() => {
+    const params: Record<string, string> = {};
+    if (platform !== "android") params.platform = platform;
+    if (userType !== "fresh") params.userType = userType;
+    if (userType === "upgrade") {
+      if (currentPlan !== "diamond") params.currentPlan = currentPlan;
+      if (currentDuration !== "1yr") params.currentDuration = currentDuration;
+      if (startDate !== format(new Date(), "yyyy-MM-dd")) params.startDate = startDate;
+      if (currentPlan === "enterprise") {
+        if (currentBusinesses !== ENTERPRISE_BASE.businesses) params.currentBiz = String(currentBusinesses);
+        if (currentUserSlab !== 3) params.currentUsers = String(currentUserSlab);
+      }
+    }
+    setSearchParams(params, { replace: true });
+  }, [platform, userType, currentPlan, currentDuration, startDate, currentBusinesses, currentUserSlab]);
 
   const isUpgrade = userType === "upgrade";
   const isCurrentEnterprise = currentPlan === "enterprise";
@@ -85,7 +122,15 @@ const PlanListValidation = () => {
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold tracking-tight">Choose Your Plan</h1>
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold tracking-tight">Choose Your Plan</h1>
+            <Button variant="outline" size="sm" className="ml-2" onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              toast("Scenario link copied!");
+            }}>
+              <Link2 className="h-3.5 w-3.5" /> Copy Scenario
+            </Button>
+          </div>
           <p className="text-sm text-muted-foreground mt-1">
             Pricing validation tool — verify plan list prices
             <span className="mx-2">·</span>

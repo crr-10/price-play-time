@@ -1,13 +1,14 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowLeft, ChevronDown, ChevronUp, AlertCircle, Plus, Minus, Info } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, AlertCircle, Plus, Minus, Info, Link2 } from "lucide-react";
 import { format, addDays } from "date-fns";
+import { toast } from "sonner";
 import {
   type PlanName,
   type Duration,
@@ -28,15 +29,46 @@ import {
 } from "@/lib/pricing-data";
 
 const PPDCalculator = () => {
-  const [currentPlan, setCurrentPlan] = useState<PlanName>("diamond");
-  const [startDate, setStartDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
-  const [currentDuration, setCurrentDuration] = useState<Duration>("1yr");
-  const [currentPlanPurchaseType, setCurrentPlanPurchaseType] = useState<UserType>("fresh");
-  const [useOldMultiYearDiscount, setUseOldMultiYearDiscount] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Enterprise config
-  const [currentBusinesses, setCurrentBusinesses] = useState<number>(ENTERPRISE_BASE.businesses);
-  const [currentUserSlab, setCurrentUserSlab] = useState<EnterpriseUserSlab>(3);
+  const [currentPlan, setCurrentPlan] = useState<PlanName>(
+    (["silver", "diamond", "platinum", "enterprise"].includes(searchParams.get("plan") || "")
+      ? searchParams.get("plan") as PlanName : "diamond")
+  );
+  const [startDate, setStartDate] = useState<string>(
+    searchParams.get("startDate") || format(new Date(), "yyyy-MM-dd")
+  );
+  const [currentDuration, setCurrentDuration] = useState<Duration>(
+    (searchParams.get("duration") as Duration) || "1yr"
+  );
+  const [currentPlanPurchaseType, setCurrentPlanPurchaseType] = useState<UserType>(
+    (["fresh", "renewal_after", "renewal_before"].includes(searchParams.get("purchaseType") || "")
+      ? searchParams.get("purchaseType") as UserType : "fresh")
+  );
+  const [useOldMultiYearDiscount, setUseOldMultiYearDiscount] = useState(
+    searchParams.get("oldDiscount") === "1"
+  );
+  const [currentBusinesses, setCurrentBusinesses] = useState<number>(
+    Number(searchParams.get("biz")) || ENTERPRISE_BASE.businesses
+  );
+  const [currentUserSlab, setCurrentUserSlab] = useState<EnterpriseUserSlab>(
+    (Number(searchParams.get("users")) || 3) as EnterpriseUserSlab
+  );
+
+  // Sync state to URL
+  useEffect(() => {
+    const params: Record<string, string> = {};
+    if (currentPlan !== "diamond") params.plan = currentPlan;
+    if (startDate !== format(new Date(), "yyyy-MM-dd")) params.startDate = startDate;
+    if (currentDuration !== "1yr") params.duration = currentDuration;
+    if (currentPlanPurchaseType !== "fresh") params.purchaseType = currentPlanPurchaseType;
+    if (useOldMultiYearDiscount) params.oldDiscount = "1";
+    if (currentPlan === "enterprise") {
+      if (currentBusinesses !== ENTERPRISE_BASE.businesses) params.biz = String(currentBusinesses);
+      if (currentUserSlab !== 3) params.users = String(currentUserSlab);
+    }
+    setSearchParams(params, { replace: true });
+  }, [currentPlan, startDate, currentDuration, currentPlanPurchaseType, useOldMultiYearDiscount, currentBusinesses, currentUserSlab]);
 
   const isCurrentEnterprise = currentPlan === "enterprise";
 
@@ -70,10 +102,16 @@ const PPDCalculator = () => {
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <div>
+          <div className="flex-1">
             <h1 className="text-xl font-bold tracking-tight">PPD Credit Calculator</h1>
             <p className="text-xs text-muted-foreground">Calculate upgrade credit based on remaining plan days</p>
           </div>
+          <Button variant="outline" size="sm" onClick={() => {
+            navigator.clipboard.writeText(window.location.href);
+            toast("Scenario link copied!");
+          }}>
+            <Link2 className="h-3.5 w-3.5" /> Copy Scenario
+          </Button>
         </div>
 
         {/* Main Card */}
