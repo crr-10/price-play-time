@@ -125,6 +125,10 @@ export const MULTI_YEAR_DISCOUNTS: Record<Duration, number> = {
   "1yr": 0, "2yr": 5, "3yr": 10, "4yr": 10, "5yr": 15, "6yr": 15, "7yr": 25, "8yr": 25, "9yr": 25, "10yr": 30,
 };
 
+export const OLD_MULTI_YEAR_DISCOUNTS: Record<Duration, number> = {
+  "1yr": 0, "2yr": 15, "3yr": 20, "4yr": 20, "5yr": 25, "6yr": 25, "7yr": 35, "8yr": 35, "9yr": 35, "10yr": 40,
+};
+
 export const DURATIONS: { key: Duration; label: string; extraOff: string }[] = [
   { key: "1yr", label: "1 Year", extraOff: "" },
   { key: "2yr", label: "2 Years", extraOff: "5% extra off" },
@@ -220,7 +224,8 @@ export function calculateUpgradeCredit(
   currentDuration: Duration,
   startDate: Date,
   enterpriseAddon: number = 0,
-  currentPlanPurchaseType: UserType = "fresh"
+  currentPlanPurchaseType: UserType = "fresh",
+  multiYearDiscountOverride?: number
 ): UpgradeCreditResult {
   const years = DURATION_YEARS[currentDuration];
   const totalDays = years * 365;
@@ -232,7 +237,7 @@ export function calculateUpgradeCredit(
   const remainingDays = Math.max(0, Math.round((planEndDate.getTime() - todayNorm.getTime()) / (1000 * 60 * 60 * 24)));
   const annualDiscounted = ANNUAL_DISCOUNTED[currentPlanPurchaseType][currentPlan] + enterpriseAddon;
   const subtotal = annualDiscounted * years;
-  const multiYearDiscountPercent = MULTI_YEAR_DISCOUNTS[currentDuration];
+  const multiYearDiscountPercent = multiYearDiscountOverride ?? MULTI_YEAR_DISCOUNTS[currentDuration];
   const totalPaid = Math.round(subtotal * (1 - multiYearDiscountPercent / 100) * 100) / 100;
   const ppd = totalPaid / totalDays;
   const credit = Math.round(ppd * remainingDays);
