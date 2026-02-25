@@ -89,6 +89,8 @@ const PlanListValidation = () => {
           <p className="text-sm text-muted-foreground mt-1">
             Pricing validation tool — verify plan list prices
             <span className="mx-2">·</span>
+            <Link to="/ppd-calculator" className="text-primary underline underline-offset-2 hover:text-primary/80">PPD Calculator</Link>
+            <span className="mx-2">·</span>
             <Link to="/qa" className="text-primary underline underline-offset-2 hover:text-primary/80">QA Checklist</Link>
           </p>
         </div>

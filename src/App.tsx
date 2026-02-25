@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import PlanListValidation from "./pages/PlanListValidation";
 import CheckoutCalculator from "./pages/CheckoutCalculator";
+import PPDCalculator from "./pages/PPDCalculator";
 import QAChecklist from "./pages/QAChecklist";
 import NotFound from "./pages/NotFound";
 
@@ -19,6 +20,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<PlanListValidation />} />
           <Route path="/calculator" element={<CheckoutCalculator />} />
+          <Route path="/ppd-calculator" element={<PPDCalculator />} />
           <Route path="/qa" element={<QAChecklist />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
