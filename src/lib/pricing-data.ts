@@ -146,10 +146,10 @@ export const MONTHLY_PRICES: Record<PlanName, number> = {
 };
 
 export const MONTHLY_DISCOUNTED_FIRST_MONTH: Record<PlanName, number> = {
-  silver: 9,
-  diamond: 49,
-  platinum: 59,
-  enterprise: 99,
+  silver: 2,
+  diamond: 2,
+  platinum: 2,
+  enterprise: 2,
 };
 
 export const MONTHLY_PLAN_DAYS = 31;
