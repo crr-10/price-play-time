@@ -101,12 +101,6 @@ const CheckoutCalculator = () => {
   const isEnterprise = plan === "enterprise";
   const isCurrentEnterprise = currentPlan === "enterprise";
 
-  // Force yearly on web
-  useEffect(() => {
-    if (platform === "web" && billingPeriod === "monthly") {
-      setBillingPeriod("yearly");
-    }
-  }, [platform]);
 
   // Sync state to URL
   useEffect(() => {
