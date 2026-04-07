@@ -203,7 +203,7 @@ const PlanListValidation = () => {
         )}
 
         {/* Monthly / Yearly Tab */}
-        {platform === "android" && (
+        {(
           <div className="flex items-center justify-center gap-2 mb-6">
             <div className="inline-flex rounded-lg border bg-muted p-1">
               <button
