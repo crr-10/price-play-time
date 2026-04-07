@@ -627,19 +627,19 @@ const CheckoutCalculator = () => {
                   </div>
                 )}
 
-                {/* Monthly variant + first month toggle */}
+{/* Monthly experiment + first month toggle */}
                 {isMonthly && (
                   <div className="flex items-center justify-between border-b border-dashed pb-4">
                     <div>
-                      <span className="text-sm font-medium">Monthly Variant</span>
-                      <p className="text-xs text-muted-foreground">Intro offer vs actual price</p>
+                      <span className="text-sm font-medium">Experiment Parameter</span>
+                      <p className="text-xs text-muted-foreground">Discounted 1st month vs actual price</p>
                     </div>
                     <div className="flex items-center gap-3">
                       <Select value={monthlyVariant} onValueChange={(v) => setMonthlyVariant(v as MonthlyVariant)}>
-                        <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-52 h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="A" className="text-xs">A — Intro Offer</SelectItem>
-                          <SelectItem value="B" className="text-xs">B — Actual Price</SelectItem>
+                          <SelectItem value="A" className="text-xs">Discounted 1st month (₹2)</SelectItem>
+                          <SelectItem value="B" className="text-xs">Actual price from month 1</SelectItem>
                         </SelectContent>
                       </Select>
                       {monthlyVariant === "A" && !isUpgrade && (
