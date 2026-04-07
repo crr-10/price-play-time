@@ -7,31 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ArrowLeft, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Plus, Minus, Phone, Info, Link2 } from "lucide-react";
-import { format, addDays } from "date-fns";
+import { format, addDays, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 import {
-  type PlanName,
-  type Duration,
-  type UserType,
-  type Platform,
-  type EnterpriseUserSlab,
-  PLANS_BY_TYPE,
-  DURATIONS,
-  DURATION_YEARS,
-  MULTI_YEAR_DISCOUNTS,
-  OLD_MULTI_YEAR_DISCOUNTS,
-  COUPON_OPTIONS,
-  USER_TYPE_LABELS,
-  PLAN_PLATFORM,
-  ENTERPRISE_BASE,
-  ENTERPRISE_MAX_BUSINESSES,
-  ENTERPRISE_USER_STEPS,
-  getEnterpriseAddon,
-  getEnterpriseUserSlabLabel,
-  calculateBreakdown,
-  calculateUpgradeCredit,
-  formatINR,
-  formatINR2,
+  type PlanName, type Duration, type UserType, type Platform, type EnterpriseUserSlab,
+  type BillingPeriod, type MonthlyVariant,
+  PLANS_BY_TYPE, DURATIONS, DURATION_YEARS, MULTI_YEAR_DISCOUNTS, OLD_MULTI_YEAR_DISCOUNTS,
+  COUPON_OPTIONS, USER_TYPE_LABELS, PLAN_PLATFORM,
+  ENTERPRISE_BASE, ENTERPRISE_MAX_BUSINESSES, ENTERPRISE_USER_STEPS,
+  getEnterpriseAddon, getEnterpriseUserSlabLabel,
+  calculateBreakdown, calculateUpgradeCredit, formatINR, formatINR2,
+  MONTHLY_PRICES, MONTHLY_DISCOUNTED_FIRST_MONTH, GST_RATE,
+  MONTHLY_PLAN_DAYS, MONTHLY_CREDIT_DAYS,
+  calculateMonthlyBreakdown, calculateMonthlyToMonthlyUpgrade, calculateMonthlyToYearlyUpgrade,
+  calculateMonthlyUpgradeCredit,
 } from "@/lib/pricing-data";
 
 const USER_TYPES: UserType[] = ["fresh", "renewal_after", "renewal_before", "upgrade"];
@@ -40,7 +29,6 @@ const PLAN_ORDER: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
 const CheckoutCalculator = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Initialize ALL state from URL params
   const [plan, setPlan] = useState<PlanName>(
     (["silver", "diamond", "platinum", "enterprise"].includes(searchParams.get("plan") || "")
       ? searchParams.get("plan") as PlanName : "platinum")
@@ -62,6 +50,13 @@ const CheckoutCalculator = () => {
   const [platform, setPlatform] = useState<Platform>(
     searchParams.get("platform") === "web" ? "web" : "android"
   );
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>(
+    searchParams.get("billing") === "monthly" ? "monthly" : "yearly"
+  );
+  const [monthlyVariant, setMonthlyVariant] = useState<MonthlyVariant>(
+    searchParams.get("variant") === "B" ? "B" : "A"
+  );
+  const [monthlyIsFirstMonth, setMonthlyIsFirstMonth] = useState(true);
 
   // Enterprise customization
   const [businesses, setBusinesses] = useState<number>(
@@ -82,6 +77,9 @@ const CheckoutCalculator = () => {
   const [currentDuration, setCurrentDuration] = useState<Duration>(
     (searchParams.get("currentDuration") as Duration) || "1yr"
   );
+  const [currentBillingPeriod, setCurrentBillingPeriod] = useState<BillingPeriod>(
+    searchParams.get("currentBilling") === "monthly" ? "monthly" : "yearly"
+  );
   const [currentBusinesses, setCurrentBusinesses] = useState<number>(
     Number(searchParams.get("currentBiz")) || ENTERPRISE_BASE.businesses
   );
@@ -96,42 +94,58 @@ const CheckoutCalculator = () => {
     searchParams.get("oldDiscount") === "1"
   );
 
+  // Derived
+  const isUpgrade = userType === "upgrade";
+  const isMonthly = billingPeriod === "monthly";
+  const isCurrentMonthly = currentBillingPeriod === "monthly";
+  const isEnterprise = plan === "enterprise";
+  const isCurrentEnterprise = currentPlan === "enterprise";
+
+  // Force yearly on web
+  useEffect(() => {
+    if (platform === "web" && billingPeriod === "monthly") {
+      setBillingPeriod("yearly");
+    }
+  }, [platform]);
+
   // Sync state to URL
   useEffect(() => {
     const params: Record<string, string> = {};
     if (plan !== "platinum") params.plan = plan;
-    if (duration !== "1yr") params.duration = duration;
+    if (billingPeriod !== "yearly") params.billing = billingPeriod;
+    if (isMonthly && monthlyVariant !== "A") params.variant = monthlyVariant;
+    if (duration !== "1yr" && !isMonthly) params.duration = duration;
     if (platform !== "android") params.platform = platform;
     if (userType !== "fresh") params.userType = userType;
     const effectiveCouponVal = useCustomCoupon ? Math.min(100, Math.max(0, Number(customCoupon) || 0)) : coupon;
-    if (effectiveCouponVal > 0) params.coupon = String(effectiveCouponVal);
-    if (plan === "enterprise") {
+    if (effectiveCouponVal > 0 && !isMonthly) params.coupon = String(effectiveCouponVal);
+    if (plan === "enterprise" && !isMonthly) {
       if (businesses !== ENTERPRISE_BASE.businesses) params.biz = String(businesses);
       if (userSlab !== 3) params.users = String(userSlab);
     }
-    if (userType === "upgrade") {
+    if (isUpgrade) {
       if (currentPlan !== "diamond") params.currentPlan = currentPlan;
-      if (currentDuration !== "1yr") params.currentDuration = currentDuration;
+      if (isCurrentMonthly) {
+        params.currentBilling = "monthly";
+      } else {
+        if (currentDuration !== "1yr") params.currentDuration = currentDuration;
+      }
       if (startDate !== format(new Date(), "yyyy-MM-dd")) params.startDate = startDate;
-      if (currentPlanPurchaseType !== "fresh") params.purchaseType = currentPlanPurchaseType;
-      if (useOldMultiYearDiscount) params.oldDiscount = "1";
+      if (!isCurrentMonthly && currentPlanPurchaseType !== "fresh") params.purchaseType = currentPlanPurchaseType;
+      if (!isCurrentMonthly && useOldMultiYearDiscount) params.oldDiscount = "1";
       if (currentPlan === "enterprise") {
         if (currentBusinesses !== ENTERPRISE_BASE.businesses) params.currentBiz = String(currentBusinesses);
         if (currentUserSlab !== 3) params.currentUsers = String(currentUserSlab);
       }
     }
     setSearchParams(params, { replace: true });
-  }, [plan, duration, platform, userType, coupon, customCoupon, useCustomCoupon, businesses, userSlab, currentPlan, startDate, currentDuration, currentBusinesses, currentUserSlab, currentPlanPurchaseType, useOldMultiYearDiscount]);
-
-  const isUpgrade = userType === "upgrade";
-  const isEnterprise = plan === "enterprise";
-  const isCurrentEnterprise = currentPlan === "enterprise";
+  }, [plan, duration, billingPeriod, monthlyVariant, platform, userType, coupon, customCoupon, useCustomCoupon, businesses, userSlab, currentPlan, startDate, currentDuration, currentBillingPeriod, currentBusinesses, currentUserSlab, currentPlanPurchaseType, useOldMultiYearDiscount]);
 
   const effectiveCoupon = useCustomCoupon
     ? Math.min(100, Math.max(0, Number(customCoupon) || 0))
     : coupon;
 
-  // Enterprise addon calculation
+  // Enterprise addon
   const enterpriseResult = isEnterprise ? getEnterpriseAddon(businesses, userSlab) : null;
   const enterpriseAddon = enterpriseResult?.addonCost ?? 0;
   const contactSales = enterpriseResult?.contactSales ?? false;
@@ -142,39 +156,56 @@ const CheckoutCalculator = () => {
     : null;
   const currentEnterpriseAddon = currentEnterpriseResult?.addonCost ?? 0;
 
-  // Enterprise-to-Enterprise with no actual upgrade (same config)
-  const isEnterpriseNoUpgrade = isUpgrade && isEnterprise && isCurrentEnterprise
-    && businesses === currentBusinesses && userSlab === currentUserSlab;
+  // Calculate remaining days for current plan
+  const currentPlanEndDate = isUpgrade
+    ? isCurrentMonthly
+      ? addDays(new Date(startDate), MONTHLY_PLAN_DAYS)
+      : addDays(new Date(startDate), DURATION_YEARS[currentDuration] * 365)
+    : null;
 
-  // Calculate upgrade credit
-  const multiYearOverride = currentDuration !== "1yr" && useOldMultiYearDiscount
+  const currentRemainingDays = isUpgrade && currentPlanEndDate
+    ? Math.max(0, differenceInDays(currentPlanEndDate, new Date()))
+    : 0;
+
+  // Enterprise-to-Enterprise no upgrade check
+  const isEnterpriseNoUpgrade = isUpgrade && isEnterprise && isCurrentEnterprise
+    && businesses === currentBusinesses && userSlab === currentUserSlab
+    && !isCurrentMonthly && !isMonthly;
+
+  // --- YEARLY UPGRADE CREDIT ---
+  const multiYearOverride = !isCurrentMonthly && currentDuration !== "1yr" && useOldMultiYearDiscount
     ? OLD_MULTI_YEAR_DISCOUNTS[currentDuration]
     : undefined;
-  const upgradeCreditResult = isUpgrade
+  const upgradeCreditResult = isUpgrade && !isCurrentMonthly
     ? calculateUpgradeCredit(currentPlan, currentDuration, new Date(startDate), isCurrentEnterprise ? currentEnterpriseAddon : 0, currentPlanPurchaseType, multiYearOverride)
     : null;
-  const upgradeCredit = upgradeCreditResult?.credit ?? 0;
+  const yearlyUpgradeCredit = upgradeCreditResult?.credit ?? 0;
+
+  // --- MONTHLY UPGRADE CREDIT ---
+  const monthlyUpgradeCreditResult = isUpgrade && isCurrentMonthly
+    ? calculateMonthlyUpgradeCredit(currentPlan, currentRemainingDays)
+    : null;
 
   // Auto-switch plan if not available on current platform
   const allPlans = PLANS_BY_TYPE[userType];
   const platformPlans = allPlans.filter((p) => PLAN_PLATFORM[p.key].includes(platform));
-  
+
   useEffect(() => {
     if (!PLAN_PLATFORM[plan].includes(platform) && platformPlans.length > 0) {
       setPlan(platformPlans[0].key);
     }
   }, [platform, plan]);
 
-  // Auto-adjust duration upward if below minimum for upgrade
+  // Auto-adjust duration upward if below minimum for yearly upgrade
   useEffect(() => {
-    if (!isUpgrade) return;
-    const remainingDays = upgradeCreditResult?.remainingDays ?? 0;
+    if (!isUpgrade || isMonthly) return;
+    const remainingDays = isCurrentMonthly ? 0 : (upgradeCreditResult?.remainingDays ?? 0);
     const minUpgradeYears = Math.max(1, Math.ceil(remainingDays / 365));
     if (DURATION_YEARS[duration] < minUpgradeYears) {
       const validDuration = DURATIONS.find((d) => DURATION_YEARS[d.key] >= minUpgradeYears);
       if (validDuration) setDuration(validDuration.key);
     }
-  }, [isUpgrade, upgradeCreditResult?.remainingDays, duration]);
+  }, [isUpgrade, isMonthly, isCurrentMonthly, upgradeCreditResult?.remainingDays, duration]);
 
   // Enforce upgrade constraints
   const minBusinesses = isUpgrade && isCurrentEnterprise && isEnterprise ? currentBusinesses : ENTERPRISE_BASE.businesses;
@@ -182,11 +213,33 @@ const CheckoutCalculator = () => {
     ? ENTERPRISE_USER_STEPS.indexOf(currentUserSlab)
     : 0;
 
-  const b = contactSales ? null : calculateBreakdown(plan, duration, effectiveCoupon, userType, upgradeCredit, enterpriseAddon);
+  // --- PRICE CALCULATIONS ---
+  // Monthly purchase (non-upgrade)
+  const monthlyBreakdown = isMonthly && !isUpgrade
+    ? calculateMonthlyBreakdown(plan, monthlyVariant, monthlyIsFirstMonth)
+    : null;
+
+  // Monthly→Monthly upgrade
+  const monthlyToMonthlyResult = isUpgrade && isCurrentMonthly && isMonthly
+    ? calculateMonthlyToMonthlyUpgrade(currentPlan, plan, currentRemainingDays)
+    : null;
+
+  // Monthly→Yearly upgrade
+  const monthlyToYearlyResult = isUpgrade && isCurrentMonthly && !isMonthly
+    ? calculateMonthlyToYearlyUpgrade(currentPlan, plan, duration, currentRemainingDays, "fresh", isEnterprise ? enterpriseAddon : 0)
+    : null;
+
+  // Yearly purchase/upgrade (existing logic)
+  const yearlyBreakdown = !isMonthly && !isCurrentMonthly
+    ? (contactSales ? null : calculateBreakdown(plan, duration, isUpgrade ? 0 : effectiveCoupon, userType, isUpgrade ? yearlyUpgradeCredit : 0, enterpriseAddon))
+    : !isMonthly && isCurrentMonthly
+    ? null // handled by monthlyToYearlyResult
+    : null;
+
   const selectedPlan = platformPlans.find((p) => p.key === plan) || platformPlans[0];
 
   const planEndDate = isUpgrade
-    ? addDays(new Date(startDate), DURATION_YEARS[currentDuration] * 365)
+    ? currentPlanEndDate
     : null;
 
   const currentPlanName = currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
@@ -195,12 +248,8 @@ const CheckoutCalculator = () => {
   const userSlabIdx = ENTERPRISE_USER_STEPS.indexOf(userSlab);
   const canDecUsers = userSlabIdx > Math.max(0, minUserSlabIdx);
   const canIncUsers = userSlabIdx < ENTERPRISE_USER_STEPS.length - 1;
-  const decUsers = () => {
-    if (canDecUsers) setUserSlab(ENTERPRISE_USER_STEPS[userSlabIdx - 1]);
-  };
-  const incUsers = () => {
-    if (canIncUsers) setUserSlab(ENTERPRISE_USER_STEPS[userSlabIdx + 1]);
-  };
+  const decUsers = () => { if (canDecUsers) setUserSlab(ENTERPRISE_USER_STEPS[userSlabIdx - 1]); };
+  const incUsers = () => { if (canIncUsers) setUserSlab(ENTERPRISE_USER_STEPS[userSlabIdx + 1]); };
 
   // Business stepper
   const canDecBiz = businesses > minBusinesses;
@@ -220,6 +269,9 @@ const CheckoutCalculator = () => {
   };
   const availableNewPlans = getAvailablePlans();
 
+  // Same plan check for monthly→monthly
+  const isMonthlyNoUpgrade = isUpgrade && isCurrentMonthly && isMonthly && currentPlan === plan;
+
   return (
     <div className="min-h-screen bg-muted/30 p-4 md:p-8">
       <div className="mx-auto max-w-5xl">
@@ -236,7 +288,7 @@ const CheckoutCalculator = () => {
               <p className="text-xs text-muted-foreground">Pricing validation tool</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <Button variant="outline" size="sm" onClick={() => {
               navigator.clipboard.writeText(window.location.href);
               toast("Scenario link copied!");
@@ -246,9 +298,7 @@ const CheckoutCalculator = () => {
             <div className="flex items-center gap-1.5">
               <Label className="text-xs">Platform:</Label>
               <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
-                <SelectTrigger className="w-28 text-xs h-8">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="w-28 text-xs h-8"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="android" className="text-xs">Android</SelectItem>
                   <SelectItem value="web" className="text-xs">Web</SelectItem>
@@ -258,9 +308,7 @@ const CheckoutCalculator = () => {
             <div className="flex items-center gap-1.5">
               <Label className="text-xs">User:</Label>
               <Select value={userType} onValueChange={(v) => setUserType(v as UserType)}>
-                <SelectTrigger className="w-56 text-xs h-8">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="w-56 text-xs h-8"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {USER_TYPES.map((ut) => (
                     <SelectItem key={ut} value={ut} className="text-xs">{USER_TYPE_LABELS[ut]}</SelectItem>
@@ -271,9 +319,7 @@ const CheckoutCalculator = () => {
           </div>
           {userType !== "fresh" && userType !== "upgrade" && (
             <p className="text-xs text-muted-foreground">
-              {userType === "renewal_after"
-                ? "First plan purchased after 16 Feb 2024"
-                : "First plan purchased before 16 Feb 2024"}
+              {userType === "renewal_after" ? "First plan purchased after 16 Feb 2024" : "First plan purchased before 16 Feb 2024"}
             </p>
           )}
         </div>
@@ -290,13 +336,11 @@ const CheckoutCalculator = () => {
                     <AlertCircle className="h-4 w-4 text-amber-600" />
                     Current Plan Details
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Current Plan</Label>
                       <Select value={currentPlan} onValueChange={(v) => setCurrentPlan(v as PlanName)}>
-                        <SelectTrigger className="bg-background">
-                          <SelectValue />
-                        </SelectTrigger>
+                        <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="silver">Silver</SelectItem>
                           <SelectItem value="diamond">Diamond</SelectItem>
@@ -306,31 +350,36 @@ const CheckoutCalculator = () => {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Plan Start Date</Label>
-                      <Input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className="bg-background"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Plan Duration</Label>
-                      <Select value={currentDuration} onValueChange={(v) => setCurrentDuration(v as Duration)}>
-                        <SelectTrigger className="bg-background">
-                          <SelectValue />
-                        </SelectTrigger>
+                      <Label className="text-xs text-muted-foreground">Current Billing</Label>
+                      <Select value={currentBillingPeriod} onValueChange={(v) => setCurrentBillingPeriod(v as BillingPeriod)}>
+                        <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {DURATIONS.map((d) => (
-                            <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>
-                          ))}
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="yearly">Yearly</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Plan Start Date</Label>
+                      <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-background" />
+                    </div>
+                    {!isCurrentMonthly && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Plan Duration</Label>
+                        <Select value={currentDuration} onValueChange={(v) => setCurrentDuration(v as Duration)}>
+                          <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {DURATIONS.map((d) => (
+                              <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Purchase type selector for Platinum/Enterprise */}
-                  {(currentPlan === "platinum" || currentPlan === "enterprise") && (
+                  {/* Purchase type for yearly Platinum/Enterprise */}
+                  {!isCurrentMonthly && (currentPlan === "platinum" || currentPlan === "enterprise") && (
                     <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
                       <Label className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
@@ -356,8 +405,9 @@ const CheckoutCalculator = () => {
                       </div>
                     </div>
                   )}
-                  {/* Old vs New multi-year discount toggle */}
-                  {currentDuration !== "1yr" && (
+
+                  {/* Old vs New multi-year discount toggle (yearly only) */}
+                  {!isCurrentMonthly && currentDuration !== "1yr" && (
                     <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
                       <Label className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
@@ -365,28 +415,20 @@ const CheckoutCalculator = () => {
                       </Label>
                       <div className="flex flex-col gap-1.5">
                         <label className="flex items-center gap-2 text-xs cursor-pointer">
-                          <input
-                            type="radio"
-                            name="multiYearDiscountSlab"
-                            checked={!useOldMultiYearDiscount}
-                            onChange={() => setUseOldMultiYearDiscount(false)}
-                            className="accent-amber-600"
-                          />
+                          <input type="radio" name="multiYearDiscountSlab" checked={!useOldMultiYearDiscount}
+                            onChange={() => setUseOldMultiYearDiscount(false)} className="accent-amber-600" />
                           New discount slabs ({MULTI_YEAR_DISCOUNTS[currentDuration]}%)
                         </label>
                         <label className="flex items-center gap-2 text-xs cursor-pointer">
-                          <input
-                            type="radio"
-                            name="multiYearDiscountSlab"
-                            checked={useOldMultiYearDiscount}
-                            onChange={() => setUseOldMultiYearDiscount(true)}
-                            className="accent-amber-600"
-                          />
+                          <input type="radio" name="multiYearDiscountSlab" checked={useOldMultiYearDiscount}
+                            onChange={() => setUseOldMultiYearDiscount(true)} className="accent-amber-600" />
                           Old discount slabs ({OLD_MULTI_YEAR_DISCOUNTS[currentDuration]}%)
                         </label>
                       </div>
                     </div>
                   )}
+
+                  {/* Enterprise current config */}
                   {isCurrentEnterprise && (
                     <div className="grid grid-cols-2 gap-4 mt-4 pt-3 border-t border-amber-200">
                       <div className="space-y-1.5">
@@ -432,15 +474,23 @@ const CheckoutCalculator = () => {
 
                   <div className="mt-3 flex items-center justify-between text-xs text-amber-700">
                     <span>
-                      Plan ends: <strong>{planEndDate ? format(planEndDate, "dd MMM yyyy") : "—"}</strong>
+                      Plan ends: <strong>{currentPlanEndDate ? format(currentPlanEndDate, "dd MMM yyyy") : "—"}</strong>
+                      {" "}({currentRemainingDays} days remaining)
                     </span>
-                    <span>
-                      Credit: <strong className="text-emerald-700">{formatINR(upgradeCredit)}</strong>
-                    </span>
+                    {isCurrentMonthly && monthlyUpgradeCreditResult && (
+                      <span>
+                        Credit: <strong className="text-emerald-700">{formatINR(monthlyUpgradeCreditResult.credit)}</strong>
+                      </span>
+                    )}
+                    {!isCurrentMonthly && (
+                      <span>
+                        Credit: <strong className="text-emerald-700">{formatINR(yearlyUpgradeCredit)}</strong>
+                      </span>
+                    )}
                   </div>
 
-                  {/* PPD Breakdown - Collapsible */}
-                  {upgradeCreditResult && (
+                  {/* PPD Breakdown for yearly */}
+                  {upgradeCreditResult && !isCurrentMonthly && (
                     <Collapsible open={ppdOpen} onOpenChange={setPpdOpen} className="mt-3 border-t border-amber-200 pt-3">
                       <CollapsibleTrigger className="flex items-center gap-1 text-xs font-semibold text-amber-800 w-full">
                         Credit Calculation (PPD Breakdown)
@@ -479,7 +529,7 @@ const CheckoutCalculator = () => {
                           <span>{upgradeCreditResult.totalDays}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Remaining Days (as of {format(new Date(), "dd MMM yyyy")})</span>
+                          <span>Remaining Days</span>
                           <span>{upgradeCreditResult.remainingDays}</span>
                         </div>
                         <div className="flex justify-between font-medium text-foreground">
@@ -494,6 +544,35 @@ const CheckoutCalculator = () => {
                       </CollapsibleContent>
                     </Collapsible>
                   )}
+
+                  {/* Monthly credit breakdown */}
+                  {isCurrentMonthly && monthlyUpgradeCreditResult && (
+                    <Collapsible open={ppdOpen} onOpenChange={setPpdOpen} className="mt-3 border-t border-amber-200 pt-3">
+                      <CollapsibleTrigger className="flex items-center gap-1 text-xs font-semibold text-amber-800 w-full">
+                        Monthly Credit Calculation
+                        {ppdOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="space-y-1.5 text-xs text-muted-foreground pt-2">
+                        <div className="flex justify-between">
+                          <span>Current Plan Price</span>
+                          <span>{formatINR(monthlyUpgradeCreditResult.currentPlanPrice)}/month</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Remaining Days</span>
+                          <span>{monthlyUpgradeCreditResult.remainingDays}</span>
+                        </div>
+                        <div className="flex justify-between font-medium text-foreground">
+                          <span>Formula</span>
+                          <span>{formatINR(monthlyUpgradeCreditResult.currentPlanPrice)} × {monthlyUpgradeCreditResult.remainingDays} / {MONTHLY_CREDIT_DAYS}</span>
+                        </div>
+                        <div className="border-t border-dashed border-amber-200 my-1" />
+                        <div className="flex justify-between font-semibold text-emerald-700">
+                          <span>Credit</span>
+                          <span>{formatINR(monthlyUpgradeCreditResult.credit)}</span>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -503,7 +582,7 @@ const CheckoutCalculator = () => {
               <CardContent className="py-4 flex items-center gap-3">
                 <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
                 <span className="font-semibold">{isUpgrade ? "Upgrading to" : "Selected Plan"}</span>
-                  <Select value={plan} onValueChange={(v) => setPlan(v as PlanName)}>
+                <Select value={plan} onValueChange={(v) => setPlan(v as PlanName)}>
                   <SelectTrigger className="w-auto border-0 bg-transparent font-semibold text-indigo-600 gap-1 px-2">
                     <SelectValue />
                   </SelectTrigger>
@@ -521,90 +600,153 @@ const CheckoutCalculator = () => {
               <CardContent className="pt-5 pb-6 space-y-5">
                 <h3 className="font-semibold text-base">Customise plan</h3>
 
-                {/* Duration */}
-                <div className="flex items-center justify-between border-b border-dashed pb-4">
-                  <span className="text-sm font-medium">Plan Duration</span>
-                  <Select value={duration} onValueChange={(v) => setDuration(v as Duration)}>
-                    <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {DURATIONS.filter((d) => {
-                        if (!isUpgrade) return true;
-                        const remainingDays = upgradeCreditResult?.remainingDays ?? 0;
-                        const minUpgradeYears = Math.max(1, Math.ceil(remainingDays / 365));
-                        return DURATION_YEARS[d.key] >= minUpgradeYears;
-                      }).map((d) => (
-                        <SelectItem key={d.key} value={d.key}>
-                          {d.label} {d.extraOff && `(${d.extraOff})`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {isUpgrade && (
-                  <p className="text-xs text-muted-foreground -mt-2">
-                    New plan ends: <strong>{format(addDays(new Date(), DURATION_YEARS[duration] * 365), "dd MMM yyyy")}</strong>
-                  </p>
-                )}
-
-                {/* Multi-year banner */}
-                {duration === "1yr" && (
-                  <div className="bg-emerald-50 text-emerald-700 text-xs rounded-md px-3 py-2 text-center">
-                    💡 Buy a multi-year plan (2–10 years) to get up to 30% extra off
-                  </div>
-                )}
-                {duration !== "1yr" && (
-                  <div className="bg-emerald-50 text-emerald-700 text-xs rounded-md px-3 py-2 text-center">
-                    ✅ {DURATIONS.find(d => d.key === duration)?.extraOff} applied!
+                {/* Billing Period Toggle (Android only) */}
+                {platform === "android" && (
+                  <div className="flex items-center justify-between border-b border-dashed pb-4">
+                    <span className="text-sm font-medium">Billing Period</span>
+                    <div className="flex items-center gap-2">
+                      <div className="inline-flex rounded-md border bg-muted p-0.5">
+                        <button
+                          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                            isMonthly ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+                          }`}
+                          onClick={() => setBillingPeriod("monthly")}
+                        >
+                          Monthly
+                        </button>
+                        <button
+                          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                            !isMonthly ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+                          }`}
+                          onClick={() => setBillingPeriod("yearly")}
+                        >
+                          Yearly
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
-                {/* Enterprise: Business & User selectors */}
-                {isEnterprise && (
+                {/* Monthly variant + first month toggle */}
+                {isMonthly && (
+                  <div className="flex items-center justify-between border-b border-dashed pb-4">
+                    <div>
+                      <span className="text-sm font-medium">Monthly Variant</span>
+                      <p className="text-xs text-muted-foreground">Intro offer vs actual price</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Select value={monthlyVariant} onValueChange={(v) => setMonthlyVariant(v as MonthlyVariant)}>
+                        <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="A" className="text-xs">A — Intro Offer</SelectItem>
+                          <SelectItem value="B" className="text-xs">B — Actual Price</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {monthlyVariant === "A" && !isUpgrade && (
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                            <input type="checkbox" checked={monthlyIsFirstMonth}
+                              onChange={(e) => setMonthlyIsFirstMonth(e.target.checked)}
+                              className="accent-indigo-600" />
+                            1st month
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Duration (yearly only) */}
+                {!isMonthly && (
+                  <>
+                    <div className="flex items-center justify-between border-b border-dashed pb-4">
+                      <span className="text-sm font-medium">Plan Duration</span>
+                      <Select value={duration} onValueChange={(v) => setDuration(v as Duration)}>
+                        <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {DURATIONS.filter((d) => {
+                            if (!isUpgrade || isCurrentMonthly) return true;
+                            const remainingDays = upgradeCreditResult?.remainingDays ?? 0;
+                            const minUpgradeYears = Math.max(1, Math.ceil(remainingDays / 365));
+                            return DURATION_YEARS[d.key] >= minUpgradeYears;
+                          }).map((d) => (
+                            <SelectItem key={d.key} value={d.key}>
+                              {d.label} {d.extraOff && `(${d.extraOff})`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {isUpgrade && (
+                      <p className="text-xs text-muted-foreground -mt-2">
+                        New plan ends: <strong>
+                          {monthlyToYearlyResult
+                            ? format(addDays(new Date(), monthlyToYearlyResult.validityDays), "dd MMM yyyy")
+                            : format(addDays(new Date(), DURATION_YEARS[duration] * 365), "dd MMM yyyy")}
+                        </strong>
+                        {monthlyToYearlyResult?.isSameTier && (
+                          <span className="text-emerald-600 ml-1">(includes {currentRemainingDays} remaining days)</span>
+                        )}
+                      </p>
+                    )}
+
+                    {/* Multi-year banner */}
+                    {duration === "1yr" && (
+                      <div className="bg-emerald-50 text-emerald-700 text-xs rounded-md px-3 py-2 text-center">
+                        💡 Buy a multi-year plan (2–10 years) to get up to 30% extra off
+                      </div>
+                    )}
+                    {duration !== "1yr" && (
+                      <div className="bg-emerald-50 text-emerald-700 text-xs rounded-md px-3 py-2 text-center">
+                        ✅ {DURATIONS.find(d => d.key === duration)?.extraOff} applied!
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Monthly info banner */}
+                {isMonthly && !isUpgrade && (
+                  <div className="bg-blue-50 text-blue-700 text-xs rounded-md px-3 py-2 text-center">
+                    📱 Renews automatically every month. Cancel anytime.
+                  </div>
+                )}
+
+                {/* Enterprise: Business & User selectors (yearly only) */}
+                {isEnterprise && !isMonthly && (
                   <div className="border-t border-dashed pt-4 space-y-4">
                     <span className="text-sm font-medium">Enterprise Configuration</span>
-
-                    {/* Businesses */}
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="text-sm">Number of Businesses</span>
                         <p className="text-xs text-muted-foreground">Base: {ENTERPRISE_BASE.businesses} businesses</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" className="h-8 w-8"
-                          onClick={decBiz} disabled={!canDecBiz}>
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={decBiz} disabled={!canDecBiz}>
                           <Minus className="h-3 w-3" />
                         </Button>
                         <span className="w-10 text-center font-semibold text-sm">
                           {businesses > ENTERPRISE_MAX_BUSINESSES ? `${ENTERPRISE_MAX_BUSINESSES + 1}+` : businesses}
                         </span>
-                        <Button variant="outline" size="icon" className="h-8 w-8"
-                          onClick={incBiz} disabled={!canIncBiz}>
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={incBiz} disabled={!canIncBiz}>
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
-
-                    {/* Users */}
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="text-sm">Number of Users</span>
                         <p className="text-xs text-muted-foreground">Base: {ENTERPRISE_BASE.users} users</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" className="h-8 w-8"
-                          onClick={decUsers} disabled={!canDecUsers}>
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={decUsers} disabled={!canDecUsers}>
                           <Minus className="h-3 w-3" />
                         </Button>
-                        <span className="w-14 text-center font-semibold text-sm">
-                          {getEnterpriseUserSlabLabel(userSlab)}
-                        </span>
-                        <Button variant="outline" size="icon" className="h-8 w-8"
-                          onClick={incUsers} disabled={!canIncUsers}>
+                        <span className="w-14 text-center font-semibold text-sm">{getEnterpriseUserSlabLabel(userSlab)}</span>
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={incUsers} disabled={!canIncUsers}>
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
-
                     {contactSales && (
                       <div className="bg-amber-50 border border-amber-200 rounded-md px-4 py-3 flex items-center gap-3">
                         <Phone className="h-4 w-4 text-amber-600 shrink-0" />
@@ -616,7 +758,6 @@ const CheckoutCalculator = () => {
                         </div>
                       </div>
                     )}
-
                     {isEnterpriseNoUpgrade && !contactSales && (
                       <div className="bg-blue-50 border border-blue-200 rounded-md px-4 py-3 flex items-center gap-3">
                         <AlertCircle className="h-4 w-4 text-blue-600 shrink-0" />
@@ -628,50 +769,42 @@ const CheckoutCalculator = () => {
                   </div>
                 )}
 
-                {/* Coupon */}
-                <div className={`border-t border-dashed pt-4 space-y-2 ${isUpgrade || userType === "renewal_after" || userType === "renewal_before" ? "opacity-50 pointer-events-none" : ""}`}>
-                  <span className="text-sm font-medium">Coupon / Discount %</span>
-                  {(isUpgrade || userType === "renewal_after" || userType === "renewal_before") && (
-                    <p className="text-xs text-muted-foreground">Not applicable for {isUpgrade ? "upgrade" : "renewal"} users</p>
-                  )}
-                  {useCustomCoupon ? (
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        type="number"
-                        placeholder="e.g. 12"
-                        value={customCoupon}
-                        onChange={(e) => setCustomCoupon(e.target.value)}
-                        className="w-24"
-                        min={0}
-                        max={100}
-                      />
-                      <span className="text-sm text-muted-foreground">%</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => { setUseCustomCoupon(false); setCustomCoupon(""); }}
-                      >
-                        Presets
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2 flex-wrap">
-                      {COUPON_OPTIONS.map((c) => (
-                        <Button
-                          key={c}
-                          variant={coupon === c ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCoupon(c)}
-                        >
-                          {c}%
-                        </Button>
-                      ))}
-                      <Button variant="ghost" size="sm" onClick={() => setUseCustomCoupon(true)}>
-                        Custom
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                {/* Coupon (yearly, non-upgrade, non-renewal only) */}
+                {!isMonthly && (
+                  <div className={`border-t border-dashed pt-4 space-y-2 ${isUpgrade || userType === "renewal_after" || userType === "renewal_before" ? "opacity-50 pointer-events-none" : ""}`}>
+                    <span className="text-sm font-medium">Coupon / Discount %</span>
+                    {(isUpgrade || userType === "renewal_after" || userType === "renewal_before") && (
+                      <p className="text-xs text-muted-foreground">Not applicable for {isUpgrade ? "upgrade" : "renewal"} users</p>
+                    )}
+                    {isMonthly && (
+                      <p className="text-xs text-muted-foreground">Not applicable for monthly plans</p>
+                    )}
+                    {useCustomCoupon ? (
+                      <div className="flex gap-2 items-center">
+                        <Input type="number" placeholder="e.g. 12" value={customCoupon}
+                          onChange={(e) => setCustomCoupon(e.target.value)} className="w-24" min={0} max={100} />
+                        <span className="text-sm text-muted-foreground">%</span>
+                        <Button variant="ghost" size="sm" onClick={() => { setUseCustomCoupon(false); setCustomCoupon(""); }}>Presets</Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 flex-wrap">
+                        {COUPON_OPTIONS.map((c) => (
+                          <Button key={c} variant={coupon === c ? "default" : "outline"} size="sm" onClick={() => setCoupon(c)}>{c}%</Button>
+                        ))}
+                        <Button variant="ghost" size="sm" onClick={() => setUseCustomCoupon(true)}>Custom</Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Monthly no-coupon notice */}
+                {isMonthly && (
+                  <div className="border-t border-dashed pt-4">
+                    <p className="text-xs text-muted-foreground">
+                      ℹ️ Coupons and referral discounts are not applicable for monthly plans.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -680,88 +813,189 @@ const CheckoutCalculator = () => {
           <div className="lg:col-span-2 lg:sticky lg:top-8 lg:self-start">
             <Card className="rounded-xl">
               <CardContent className="pt-6 pb-6">
-                {contactSales ? (
+                {/* Contact Sales */}
+                {contactSales && !isMonthly ? (
                   <div className="text-center py-8 space-y-3">
                     <Phone className="h-10 w-10 text-amber-500 mx-auto" />
                     <h3 className="font-bold text-lg">Contact Sales</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Custom pricing is available for your enterprise configuration. Please contact our sales team.
-                    </p>
+                    <p className="text-sm text-muted-foreground">Custom pricing is available for your enterprise configuration.</p>
                   </div>
                 ) : isEnterpriseNoUpgrade ? (
                   <div className="text-center py-8 space-y-3">
                     <AlertCircle className="h-10 w-10 text-blue-500 mx-auto" />
                     <h3 className="font-bold text-lg">No Upgrade Selected</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Please select a higher configuration to see pricing.
-                    </p>
+                    <p className="text-sm text-muted-foreground">Please select a higher configuration to see pricing.</p>
                   </div>
-                ) : b && (
+                ) : isMonthlyNoUpgrade ? (
+                  <div className="text-center py-8 space-y-3">
+                    <AlertCircle className="h-10 w-10 text-blue-500 mx-auto" />
+                    <h3 className="font-bold text-lg">No Upgrade Selected</h3>
+                    <p className="text-sm text-muted-foreground">Select a higher-tier plan to upgrade.</p>
+                  </div>
+                ) : isMonthly && !isUpgrade && monthlyBreakdown ? (
+                  /* Monthly purchase breakdown */
+                  <>
+                    <h3 className="font-bold text-lg mb-5">Price Details — Monthly</h3>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{selectedPlan?.name} Monthly Plan</span>
+                        <span className="font-medium">{formatINR(monthlyBreakdown.baseAmount)}</span>
+                      </div>
+                      {monthlyBreakdown.isFirstMonth && (
+                        <div className="flex justify-between text-emerald-600">
+                          <span>Intro Offer (1st month)</span>
+                          <span className="font-medium">
+                            <span className="line-through text-muted-foreground mr-1">{formatINR(MONTHLY_PRICES[plan])}</span>
+                            {formatINR(MONTHLY_DISCOUNTED_FIRST_MONTH[plan])}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>GST ({GST_RATE}%)</span>
+                        <span>{formatINR(monthlyBreakdown.gstAmount)}</span>
+                      </div>
+                      <div className="border-t border-dashed border-border" />
+                      <div className="flex justify-between items-center pt-1">
+                        <span className="text-base font-bold">Total Price</span>
+                        <span className="text-xl font-bold text-primary">{formatINR(monthlyBreakdown.totalPrice)}</span>
+                      </div>
+                      {monthlyVariant === "A" && monthlyBreakdown.isFirstMonth && (
+                        <p className="text-xs text-muted-foreground text-center mt-2">
+                          then {formatINR(MONTHLY_PRICES[plan])}/month + GST from 2nd month
+                        </p>
+                      )}
+                    </div>
+                  </>
+                ) : isMonthly && isUpgrade && monthlyToMonthlyResult ? (
+                  /* Monthly→Monthly upgrade breakdown */
+                  <>
+                    <h3 className="font-bold text-lg mb-5">Upgrade — Monthly → Monthly</h3>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">New Plan ({selectedPlan?.name} Monthly)</span>
+                        <span className="font-medium">{formatINR(monthlyToMonthlyResult.newPlanPrice)}</span>
+                      </div>
+                      <div className="flex justify-between text-amber-700">
+                        <span>Credit for {currentPlanName} plan</span>
+                        <span className="font-medium">- {formatINR(monthlyToMonthlyResult.credit)}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold">
+                        <span>Charge Now (ex-GST)</span>
+                        <span>{formatINR(monthlyToMonthlyResult.chargeNow)}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>GST ({GST_RATE}%)</span>
+                        <span>{formatINR(monthlyToMonthlyResult.gstAmount)}</span>
+                      </div>
+                      <div className="border-t border-dashed border-border" />
+                      <div className="flex justify-between items-center pt-1">
+                        <span className="text-base font-bold">Total Price</span>
+                        <span className="text-xl font-bold text-primary">{formatINR(monthlyToMonthlyResult.totalPrice)}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center mt-2">
+                        Next auto-debit: {formatINR(MONTHLY_PRICES[plan])}/month + GST after 30 days
+                      </p>
+                    </div>
+                  </>
+                ) : !isMonthly && isCurrentMonthly && monthlyToYearlyResult ? (
+                  /* Monthly→Yearly upgrade breakdown */
+                  <>
+                    <h3 className="font-bold text-lg mb-5">Upgrade — Monthly → Yearly</h3>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{selectedPlan?.name} ({duration.replace("yr", " Year")})</span>
+                        <span className="font-medium">{formatINR(monthlyToYearlyResult.annualPrice)}</span>
+                      </div>
+                      {monthlyToYearlyResult.credit > 0 && (
+                        <div className="flex justify-between text-amber-700">
+                          <span>Credit for {currentPlanName} monthly</span>
+                          <span className="font-medium">- {formatINR(monthlyToYearlyResult.credit)}</span>
+                        </div>
+                      )}
+                      {monthlyToYearlyResult.isSameTier && (
+                        <div className="flex justify-between text-blue-600">
+                          <span>Same tier — no credit deducted</span>
+                          <span className="text-xs">(+{currentRemainingDays} days added)</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-semibold">
+                        <span>Charge Now (ex-GST)</span>
+                        <span>{formatINR(monthlyToYearlyResult.chargeNow)}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>GST ({GST_RATE}%)</span>
+                        <span>{formatINR(monthlyToYearlyResult.gstAmount)}</span>
+                      </div>
+                      <div className="border-t border-dashed border-border" />
+                      <div className="flex justify-between items-center pt-1">
+                        <span className="text-base font-bold">Total Price</span>
+                        <span className="text-xl font-bold text-primary">{formatINR(monthlyToYearlyResult.totalPrice)}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center mt-2">
+                        Validity: {monthlyToYearlyResult.validityDays} days ({format(addDays(new Date(), monthlyToYearlyResult.validityDays), "dd MMM yyyy")})
+                      </p>
+                    </div>
+                  </>
+                ) : yearlyBreakdown && !isMonthly ? (
+                  /* Yearly purchase/upgrade breakdown (existing) */
                   <>
                     <h3 className="font-bold text-lg mb-5">Price Details</h3>
-
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Original Price</span>
-                        <span className="font-medium">{formatINR(b.originalPrice)}</span>
+                        <span className="font-medium">{formatINR(yearlyBreakdown.originalPrice)}</span>
                       </div>
-
                       <Collapsible open={discountOpen} onOpenChange={setDiscountOpen}>
                         <CollapsibleTrigger className="flex justify-between w-full text-emerald-600">
                           <span className="flex items-center gap-1">
-                            Total Discount ({b.totalDiscountPercent}%)
+                            Total Discount ({yearlyBreakdown.totalDiscountPercent}%)
                             {discountOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                           </span>
-                          <span className="font-medium">- {formatINR(b.totalDiscountAmount)}</span>
+                          <span className="font-medium">- {formatINR(yearlyBreakdown.totalDiscountAmount)}</span>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <div className="pl-4 pt-2 space-y-2 text-muted-foreground text-xs">
                             <div className="flex justify-between">
-                              <span>{b.actualPlanDiscountPercent}% Discount</span>
-                              <span>- {formatINR(b.planDiscountAmount)}</span>
+                              <span>{yearlyBreakdown.actualPlanDiscountPercent}% Discount</span>
+                              <span>- {formatINR(yearlyBreakdown.planDiscountAmount)}</span>
                             </div>
-                            {b.multiYearDiscountPercent > 0 && (
+                            {yearlyBreakdown.multiYearDiscountPercent > 0 && (
                               <div className="flex justify-between">
                                 <span>Multi Year Extra Off</span>
-                                <span>- {formatINR(b.multiYearDiscountAmount)}</span>
+                                <span>- {formatINR(yearlyBreakdown.multiYearDiscountAmount)}</span>
                               </div>
                             )}
-                            {b.couponDiscountPercent > 0 && (
+                            {yearlyBreakdown.couponDiscountPercent > 0 && (
                               <div className="flex justify-between">
-                                <span>Coupon Discount ({b.couponDiscountPercent}%)</span>
-                                <span>- {formatINR(b.couponDiscountAmount)}</span>
+                                <span>Coupon Discount ({yearlyBreakdown.couponDiscountPercent}%)</span>
+                                <span>- {formatINR(yearlyBreakdown.couponDiscountAmount)}</span>
                               </div>
                             )}
                           </div>
                         </CollapsibleContent>
                       </Collapsible>
-
                       <div className="flex justify-between font-semibold">
                         <span>Price After Discount</span>
-                        <span>{formatINR(b.priceAfterCoupon)}</span>
+                        <span>{formatINR(yearlyBreakdown.priceAfterCoupon)}</span>
                       </div>
-
-                      {isUpgrade && b.upgradeCredit > 0 && (
+                      {isUpgrade && yearlyBreakdown.upgradeCredit > 0 && (
                         <div className="flex justify-between text-amber-700">
                           <span>Credit for current plan</span>
-                          <span className="font-medium">- {formatINR(b.upgradeCredit)}</span>
+                          <span className="font-medium">- {formatINR(yearlyBreakdown.upgradeCredit)}</span>
                         </div>
                       )}
-
                       <div className="flex justify-between text-muted-foreground">
                         <span>GST (18%)</span>
-                        <span>{formatINR(b.gstAmount)}</span>
+                        <span>{formatINR(yearlyBreakdown.gstAmount)}</span>
                       </div>
-
                       <div className="border-t border-dashed border-border" />
-
                       <div className="flex justify-between items-center pt-1">
                         <span className="text-base font-bold">Total Price</span>
-                        <span className="text-xl font-bold text-primary">{formatINR(b.totalPrice)}</span>
+                        <span className="text-xl font-bold text-primary">{formatINR(yearlyBreakdown.totalPrice)}</span>
                       </div>
                     </div>
                   </>
-                )}
+                ) : null}
               </CardContent>
             </Card>
           </div>
