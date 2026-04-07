@@ -2,6 +2,7 @@
 
 export type PlanName = "silver" | "diamond" | "platinum" | "enterprise";
 export type Platform = "android" | "web";
+export type BillingPeriod = "monthly" | "yearly";
 
 export const PLAN_PLATFORM: Record<PlanName, Platform[]> = {
   silver: ["android"],
@@ -134,6 +135,146 @@ export const DURATIONS: { key: Duration; label: string; extraOff: string }[] = [
 
 export const GST_RATE = 18;
 export const COUPON_OPTIONS = [0, 5, 10, 15, 30];
+
+// --- Monthly Plan Pricing ---
+
+export const MONTHLY_PRICES: Record<PlanName, number> = {
+  silver: 39,
+  diamond: 249,
+  platinum: 299,
+  enterprise: 499,
+};
+
+export const MONTHLY_DISCOUNTED_FIRST_MONTH: Record<PlanName, number> = {
+  silver: 9,
+  diamond: 49,
+  platinum: 59,
+  enterprise: 99,
+};
+
+export const MONTHLY_PLAN_DAYS = 31;
+export const MONTHLY_CREDIT_DAYS = 30; // credit calc uses 30-day basis
+
+export type MonthlyVariant = "A" | "B";
+
+export interface MonthlyPriceInfo {
+  plan: PlanName;
+  actualMonthly: number;
+  discountedFirstMonth: number;
+  actualWithGst: number;
+  discountedWithGst: number;
+}
+
+export function getMonthlyPriceInfo(plan: PlanName): MonthlyPriceInfo {
+  const actual = MONTHLY_PRICES[plan];
+  const discounted = MONTHLY_DISCOUNTED_FIRST_MONTH[plan];
+  return {
+    plan,
+    actualMonthly: actual,
+    discountedFirstMonth: discounted,
+    actualWithGst: Math.round(actual * (1 + GST_RATE / 100)),
+    discountedWithGst: Math.round(discounted * (1 + GST_RATE / 100)),
+  };
+}
+
+export interface MonthlyBreakdown {
+  baseAmount: number;
+  gstAmount: number;
+  totalPrice: number;
+  isFirstMonth: boolean;
+}
+
+export function calculateMonthlyBreakdown(
+  plan: PlanName,
+  variant: MonthlyVariant,
+  isFirstMonth: boolean = true
+): MonthlyBreakdown {
+  const price = variant === "A" && isFirstMonth
+    ? MONTHLY_DISCOUNTED_FIRST_MONTH[plan]
+    : MONTHLY_PRICES[plan];
+  const gst = Math.round(price * GST_RATE / 100);
+  return { baseAmount: price, gstAmount: gst, totalPrice: price + gst, isFirstMonth: variant === "A" && isFirstMonth };
+}
+
+// --- Monthly Upgrade Credit ---
+
+export interface MonthlyUpgradeCreditResult {
+  credit: number;
+  remainingDays: number;
+  currentPlanPrice: number;
+}
+
+export function calculateMonthlyUpgradeCredit(
+  currentPlan: PlanName,
+  remainingDays: number
+): MonthlyUpgradeCreditResult {
+  const currentPrice = MONTHLY_PRICES[currentPlan];
+  const credit = Math.round(currentPrice * remainingDays / MONTHLY_CREDIT_DAYS);
+  return { credit, remainingDays, currentPlanPrice: currentPrice };
+}
+
+export interface MonthlyToMonthlyUpgrade {
+  newPlanPrice: number;
+  credit: number;
+  chargeNow: number;
+  gstAmount: number;
+  totalPrice: number;
+}
+
+export function calculateMonthlyToMonthlyUpgrade(
+  currentPlan: PlanName,
+  newPlan: PlanName,
+  remainingDays: number
+): MonthlyToMonthlyUpgrade {
+  const newPrice = MONTHLY_PRICES[newPlan];
+  const { credit } = calculateMonthlyUpgradeCredit(currentPlan, remainingDays);
+  const chargeNow = Math.max(0, newPrice - credit);
+  const gst = Math.round(chargeNow * GST_RATE / 100);
+  return { newPlanPrice: newPrice, credit, chargeNow, gstAmount: gst, totalPrice: chargeNow + gst };
+}
+
+export interface MonthlyToYearlyUpgrade {
+  annualPrice: number;
+  credit: number;
+  chargeNow: number;
+  gstAmount: number;
+  totalPrice: number;
+  validityDays: number;
+  isSameTier: boolean;
+}
+
+export function calculateMonthlyToYearlyUpgrade(
+  currentPlan: PlanName,
+  newPlan: PlanName,
+  newDuration: Duration,
+  remainingDays: number,
+  userType: UserType,
+  enterpriseAddon: number = 0
+): MonthlyToYearlyUpgrade {
+  const isSameTier = currentPlan === newPlan;
+  const years = DURATION_YEARS[newDuration];
+  const baseAnnualDiscounted = ANNUAL_DISCOUNTED[userType][newPlan];
+  const annualDiscounted = baseAnnualDiscounted + (newPlan === "enterprise" ? enterpriseAddon : 0);
+  const subtotal = annualDiscounted * years;
+  const multiYearDiscount = MULTI_YEAR_DISCOUNTS[newDuration];
+  const annualPrice = Math.round(subtotal * (1 - multiYearDiscount / 100));
+
+  let credit = 0;
+  let validityDays = years * 365;
+
+  if (isSameTier) {
+    // Same tier: no credit, validity = 365 * years + remaining days
+    validityDays = years * 365 + remainingDays;
+  } else {
+    // Higher tier: credit applied, validity = 365 * years
+    const { credit: c } = calculateMonthlyUpgradeCredit(currentPlan, remainingDays);
+    credit = c;
+  }
+
+  const chargeNow = Math.max(0, annualPrice - credit);
+  const gst = Math.round(chargeNow * GST_RATE / 100);
+  return { annualPrice, credit, chargeNow, gstAmount: gst, totalPrice: chargeNow + gst, validityDays, isSameTier };
+}
 
 // --- Enterprise Business & User Customization ---
 
