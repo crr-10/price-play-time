@@ -101,15 +101,7 @@ const PlanListValidation = () => {
     setSearchParams(params, { replace: true });
   }, [platform, billingPeriod, monthlyVariant, userType, currentPlan, currentDuration, currentBillingPeriod, startDate, currentBusinesses, currentUserSlab]);
 
-  // Monthly plans only on Android
   const isMonthly = billingPeriod === "monthly";
-
-  // Force yearly on web
-  useEffect(() => {
-    if (platform === "web" && billingPeriod === "monthly") {
-      setBillingPeriod("yearly");
-    }
-  }, [platform]);
 
   const isUpgrade = userType === "upgrade";
   const isCurrentEnterprise = currentPlan === "enterprise";
