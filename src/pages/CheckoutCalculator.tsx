@@ -101,12 +101,6 @@ const CheckoutCalculator = () => {
   const isEnterprise = plan === "enterprise";
   const isCurrentEnterprise = currentPlan === "enterprise";
 
-  // Force yearly on web
-  useEffect(() => {
-    if (platform === "web" && billingPeriod === "monthly") {
-      setBillingPeriod("yearly");
-    }
-  }, [platform]);
 
   // Sync state to URL
   useEffect(() => {
@@ -600,8 +594,8 @@ const CheckoutCalculator = () => {
               <CardContent className="pt-5 pb-6 space-y-5">
                 <h3 className="font-semibold text-base">Customise plan</h3>
 
-                {/* Billing Period Toggle (Android only) */}
-                {platform === "android" && (
+                {/* Billing Period Toggle */}
+                {(
                   <div className="flex items-center justify-between border-b border-dashed pb-4">
                     <span className="text-sm font-medium">Billing Period</span>
                     <div className="flex items-center gap-2">
