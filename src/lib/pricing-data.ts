@@ -2,6 +2,7 @@
 
 export type PlanName = "silver" | "diamond" | "platinum" | "enterprise";
 export type Platform = "android" | "web";
+export type BillingPeriod = "monthly" | "yearly";
 
 export const PLAN_PLATFORM: Record<PlanName, Platform[]> = {
   silver: ["android"],
