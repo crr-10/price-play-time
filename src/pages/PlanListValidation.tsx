@@ -235,14 +235,14 @@ const PlanListValidation = () => {
               </button>
             </div>
 
-            {isMonthly && (
+{isMonthly && (
               <div className="flex items-center gap-2 ml-4">
-                <Label className="text-xs text-muted-foreground">Variant:</Label>
+                <Label className="text-xs text-muted-foreground">Experiment:</Label>
                 <Select value={monthlyVariant} onValueChange={(v) => setMonthlyVariant(v as MonthlyVariant)}>
-                  <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-56 h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="A" className="text-xs">A — Discounted 1st Month</SelectItem>
-                    <SelectItem value="B" className="text-xs">B — Actual Price Only</SelectItem>
+                    <SelectItem value="A" className="text-xs">Discounted 1st month (₹2)</SelectItem>
+                    <SelectItem value="B" className="text-xs">Actual price from month 1</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
