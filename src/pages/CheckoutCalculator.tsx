@@ -16,7 +16,7 @@ import {
   COUPON_OPTIONS, USER_TYPE_LABELS, PLAN_PLATFORM,
   ENTERPRISE_BASE, ENTERPRISE_MAX_BUSINESSES, ENTERPRISE_USER_STEPS,
   getEnterpriseAddon, getEnterpriseUserSlabLabel,
-  calculateBreakdown, calculateUpgradeCredit, formatINR, formatINR2,
+  calculateBreakdown, calculateUpgradeCredit, calculateCustomUpgradeCredit, formatINR, formatINR2,
   MONTHLY_PRICES, MONTHLY_DISCOUNTED_FIRST_MONTH, GST_RATE,
   MONTHLY_PLAN_DAYS, MONTHLY_CREDIT_DAYS,
   calculateMonthlyBreakdown, calculateMonthlyToMonthlyUpgrade, calculateMonthlyToYearlyUpgrade,
@@ -92,6 +92,14 @@ const CheckoutCalculator = () => {
   );
   const [useOldMultiYearDiscount, setUseOldMultiYearDiscount] = useState(
     searchParams.get("oldDiscount") === "1"
+  );
+  // Custom pricing (sales-sold plans) — yearly current plans only
+  const [useCustomPricing, setUseCustomPricing] = useState(searchParams.get("custom") === "1");
+  const [customAmountPaid, setCustomAmountPaid] = useState<string>(
+    searchParams.get("customAmount") || "10000"
+  );
+  const [customEndDate, setCustomEndDate] = useState<string>(
+    searchParams.get("customEnd") || format(addDays(new Date(), 365), "yyyy-MM-dd")
   );
 
   // Derived
