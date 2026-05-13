@@ -77,8 +77,13 @@ const PPDCalculator = () => {
       if (currentBusinesses !== ENTERPRISE_BASE.businesses) params.biz = String(currentBusinesses);
       if (currentUserSlab !== 3) params.users = String(currentUserSlab);
     }
+    if (useCustomPricing) {
+      params.custom = "1";
+      params.customAmount = customAmountPaid;
+      params.customEnd = customEndDate;
+    }
     setSearchParams(params, { replace: true });
-  }, [currentPlan, startDate, currentDuration, currentPlanPurchaseType, useOldMultiYearDiscount, currentBusinesses, currentUserSlab]);
+  }, [currentPlan, startDate, currentDuration, currentPlanPurchaseType, useOldMultiYearDiscount, currentBusinesses, currentUserSlab, useCustomPricing, customAmountPaid, customEndDate]);
 
   const isCurrentEnterprise = currentPlan === "enterprise";
 
@@ -91,7 +96,7 @@ const PPDCalculator = () => {
     ? OLD_MULTI_YEAR_DISCOUNTS[currentDuration]
     : undefined;
 
-  const upgradeCreditResult = calculateUpgradeCredit(
+  const standardCreditResult = calculateUpgradeCredit(
     currentPlan,
     currentDuration,
     new Date(startDate),
@@ -100,7 +105,15 @@ const PPDCalculator = () => {
     multiYearOverride
   );
 
-  const planEndDate = addDays(new Date(startDate), DURATION_YEARS[currentDuration] * 365);
+  const customCreditResult = calculateCustomUpgradeCredit(
+    Number(customAmountPaid) || 0,
+    new Date(startDate),
+    new Date(customEndDate)
+  );
+
+  const planEndDate = useCustomPricing
+    ? new Date(customEndDate)
+    : addDays(new Date(startDate), DURATION_YEARS[currentDuration] * 365);
 
   return (
     <div className="min-h-screen bg-muted/30 p-4 md:p-8">
