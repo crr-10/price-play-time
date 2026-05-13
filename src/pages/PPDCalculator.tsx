@@ -24,6 +24,7 @@ import {
   getEnterpriseAddon,
   getEnterpriseUserSlabLabel,
   calculateUpgradeCredit,
+  calculateCustomUpgradeCredit,
   formatINR,
   formatINR2,
 } from "@/lib/pricing-data";
@@ -55,6 +56,15 @@ const PPDCalculator = () => {
     (Number(searchParams.get("users")) || 3) as EnterpriseUserSlab
   );
 
+  // Custom pricing (sales-sold plans)
+  const [useCustomPricing, setUseCustomPricing] = useState(searchParams.get("custom") === "1");
+  const [customAmountPaid, setCustomAmountPaid] = useState<string>(
+    searchParams.get("customAmount") || "10000"
+  );
+  const [customEndDate, setCustomEndDate] = useState<string>(
+    searchParams.get("customEnd") || format(addDays(new Date(), 365), "yyyy-MM-dd")
+  );
+
   // Sync state to URL
   useEffect(() => {
     const params: Record<string, string> = {};
@@ -67,8 +77,13 @@ const PPDCalculator = () => {
       if (currentBusinesses !== ENTERPRISE_BASE.businesses) params.biz = String(currentBusinesses);
       if (currentUserSlab !== 3) params.users = String(currentUserSlab);
     }
+    if (useCustomPricing) {
+      params.custom = "1";
+      params.customAmount = customAmountPaid;
+      params.customEnd = customEndDate;
+    }
     setSearchParams(params, { replace: true });
-  }, [currentPlan, startDate, currentDuration, currentPlanPurchaseType, useOldMultiYearDiscount, currentBusinesses, currentUserSlab]);
+  }, [currentPlan, startDate, currentDuration, currentPlanPurchaseType, useOldMultiYearDiscount, currentBusinesses, currentUserSlab, useCustomPricing, customAmountPaid, customEndDate]);
 
   const isCurrentEnterprise = currentPlan === "enterprise";
 
@@ -81,7 +96,7 @@ const PPDCalculator = () => {
     ? OLD_MULTI_YEAR_DISCOUNTS[currentDuration]
     : undefined;
 
-  const upgradeCreditResult = calculateUpgradeCredit(
+  const standardCreditResult = calculateUpgradeCredit(
     currentPlan,
     currentDuration,
     new Date(startDate),
@@ -90,7 +105,15 @@ const PPDCalculator = () => {
     multiYearOverride
   );
 
-  const planEndDate = addDays(new Date(startDate), DURATION_YEARS[currentDuration] * 365);
+  const customCreditResult = calculateCustomUpgradeCredit(
+    Number(customAmountPaid) || 0,
+    new Date(startDate),
+    new Date(customEndDate)
+  );
+
+  const planEndDate = useCustomPricing
+    ? new Date(customEndDate)
+    : addDays(new Date(startDate), DURATION_YEARS[currentDuration] * 365);
 
   return (
     <div className="min-h-screen bg-muted/30 p-4 md:p-8">
@@ -146,18 +169,56 @@ const PPDCalculator = () => {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Plan Duration</Label>
-                <Select value={currentDuration} onValueChange={(v) => setCurrentDuration(v as Duration)}>
-                  <SelectTrigger className="bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DURATIONS.map((d) => (
-                      <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-xs text-muted-foreground">
+                  {useCustomPricing ? "Plan End Date" : "Plan Duration"}
+                </Label>
+                {useCustomPricing ? (
+                  <Input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="bg-background"
+                  />
+                ) : (
+                  <Select value={currentDuration} onValueChange={(v) => setCurrentDuration(v as Duration)}>
+                    <SelectTrigger className="bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DURATIONS.map((d) => (
+                        <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
+            </div>
+
+            {/* Custom pricing toggle (sales-team flow) */}
+            <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
+              <label className="flex items-center gap-2 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useCustomPricing}
+                  onChange={(e) => setUseCustomPricing(e.target.checked)}
+                  className="accent-amber-600"
+                />
+                <Info className="h-3 w-3" />
+                Use custom pricing (sales-sold plan)
+              </label>
+              {useCustomPricing && (
+                <div className="space-y-1.5 pl-6">
+                  <Label className="text-xs text-muted-foreground">Amount Paid (ex-GST)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={customAmountPaid}
+                    onChange={(e) => setCustomAmountPaid(e.target.value)}
+                    placeholder="e.g. 12000"
+                    className="bg-background"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Purchase type selector for Platinum/Enterprise */}
@@ -189,7 +250,7 @@ const PPDCalculator = () => {
             )}
 
             {/* Old vs New multi-year discount toggle */}
-            {currentDuration !== "1yr" && (
+            {!useCustomPricing && currentDuration !== "1yr" && (
               <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
                 <Label className="text-xs text-muted-foreground flex items-center gap-1">
                   <Info className="h-3 w-3" />
@@ -270,7 +331,7 @@ const PPDCalculator = () => {
                 Plan ends: <strong>{format(planEndDate, "dd MMM yyyy")}</strong>
               </span>
               <span>
-                Credit: <strong className="text-emerald-700">{formatINR(upgradeCreditResult.credit)}</strong>
+                Credit: <strong className="text-emerald-700">{formatINR(useCustomPricing ? customCreditResult.credit : standardCreditResult.credit)}</strong>
               </span>
             </div>
 
@@ -282,50 +343,83 @@ const PPDCalculator = () => {
                 <ChevronDown className="h-3.5 w-3.5 group-data-[state=open]:hidden" />
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-1.5 text-xs text-muted-foreground pt-2">
-                {(currentPlan === "platinum" || currentPlan === "enterprise") && (
-                  <div className="flex justify-between text-amber-700">
-                    <span>Purchase Type</span>
-                    <span className="font-medium">
-                      {currentPlanPurchaseType === "fresh" ? "First-time" : currentPlanPurchaseType === "renewal_after" ? "Renewal (after Feb '24)" : "Renewal (before Feb '24)"}
-                    </span>
-                  </div>
+                {useCustomPricing ? (
+                  <>
+                    <div className="flex justify-between text-amber-700">
+                      <span>Pricing Source</span>
+                      <span className="font-medium">Custom (sales-sold)</span>
+                    </div>
+                    <div className="flex justify-between font-medium text-foreground">
+                      <span>Total Paid (ex-GST)</span>
+                      <span>{formatINR2(customCreditResult.totalPaid)}</span>
+                    </div>
+                    <div className="border-t border-dashed border-amber-200 my-1" />
+                    <div className="flex justify-between">
+                      <span>Total Days (Start → End)</span>
+                      <span>{customCreditResult.totalDays}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Remaining Days (as of {format(new Date(), "dd MMM yyyy")})</span>
+                      <span>{customCreditResult.remainingDays}</span>
+                    </div>
+                    <div className="flex justify-between font-medium text-foreground">
+                      <span>PPD (Total Paid ÷ Total Days)</span>
+                      <span>{formatINR2(customCreditResult.ppd)}</span>
+                    </div>
+                    <div className="border-t border-dashed border-amber-200 my-1" />
+                    <div className="flex justify-between font-semibold text-emerald-700">
+                      <span>Credit (PPD × Remaining Days)</span>
+                      <span>{formatINR(customCreditResult.credit)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {(currentPlan === "platinum" || currentPlan === "enterprise") && (
+                      <div className="flex justify-between text-amber-700">
+                        <span>Purchase Type</span>
+                        <span className="font-medium">
+                          {currentPlanPurchaseType === "fresh" ? "First-time" : currentPlanPurchaseType === "renewal_after" ? "Renewal (after Feb '24)" : "Renewal (before Feb '24)"}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span>Annual Discounted Price{isCurrentEnterprise && currentEnterpriseAddon > 0 ? " (incl. addons)" : ""}</span>
+                      <span>{formatINR(standardCreditResult.annualDiscounted)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>× {standardCreditResult.years} year{standardCreditResult.years > 1 ? "s" : ""}</span>
+                      <span>{formatINR(standardCreditResult.subtotal)}</span>
+                    </div>
+                    {standardCreditResult.multiYearDiscountPercent > 0 && (
+                      <div className="flex justify-between text-emerald-700">
+                        <span>Multi-year discount ({standardCreditResult.multiYearDiscountPercent}%)</span>
+                        <span>- {formatINR(Math.round(standardCreditResult.subtotal * standardCreditResult.multiYearDiscountPercent / 100))}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-medium text-foreground">
+                      <span>Total Paid (ex-GST)</span>
+                      <span>{formatINR2(standardCreditResult.totalPaid)}</span>
+                    </div>
+                    <div className="border-t border-dashed border-amber-200 my-1" />
+                    <div className="flex justify-between">
+                      <span>Total Days</span>
+                      <span>{standardCreditResult.totalDays}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Remaining Days (as of {format(new Date(), "dd MMM yyyy")})</span>
+                      <span>{standardCreditResult.remainingDays}</span>
+                    </div>
+                    <div className="flex justify-between font-medium text-foreground">
+                      <span>PPD (Total Paid ÷ Total Days)</span>
+                      <span>{formatINR2(standardCreditResult.ppd)}</span>
+                    </div>
+                    <div className="border-t border-dashed border-amber-200 my-1" />
+                    <div className="flex justify-between font-semibold text-emerald-700">
+                      <span>Credit (PPD × Remaining Days)</span>
+                      <span>{formatINR(standardCreditResult.credit)}</span>
+                    </div>
+                  </>
                 )}
-                <div className="flex justify-between">
-                  <span>Annual Discounted Price{isCurrentEnterprise && currentEnterpriseAddon > 0 ? " (incl. addons)" : ""}</span>
-                  <span>{formatINR(upgradeCreditResult.annualDiscounted)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>× {upgradeCreditResult.years} year{upgradeCreditResult.years > 1 ? "s" : ""}</span>
-                  <span>{formatINR(upgradeCreditResult.subtotal)}</span>
-                </div>
-                {upgradeCreditResult.multiYearDiscountPercent > 0 && (
-                  <div className="flex justify-between text-emerald-700">
-                    <span>Multi-year discount ({upgradeCreditResult.multiYearDiscountPercent}%)</span>
-                    <span>- {formatINR(Math.round(upgradeCreditResult.subtotal * upgradeCreditResult.multiYearDiscountPercent / 100))}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-medium text-foreground">
-                  <span>Total Paid (ex-GST)</span>
-                  <span>{formatINR2(upgradeCreditResult.totalPaid)}</span>
-                </div>
-                <div className="border-t border-dashed border-amber-200 my-1" />
-                <div className="flex justify-between">
-                  <span>Total Days</span>
-                  <span>{upgradeCreditResult.totalDays}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Remaining Days (as of {format(new Date(), "dd MMM yyyy")})</span>
-                  <span>{upgradeCreditResult.remainingDays}</span>
-                </div>
-                <div className="flex justify-between font-medium text-foreground">
-                  <span>PPD (Total Paid ÷ Total Days)</span>
-                  <span>{formatINR2(upgradeCreditResult.ppd)}</span>
-                </div>
-                <div className="border-t border-dashed border-amber-200 my-1" />
-                <div className="flex justify-between font-semibold text-emerald-700">
-                  <span>Credit (PPD × Remaining Days)</span>
-                  <span>{formatINR(upgradeCreditResult.credit)}</span>
-                </div>
               </CollapsibleContent>
             </Collapsible>
           </CardContent>

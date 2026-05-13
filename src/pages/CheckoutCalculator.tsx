@@ -16,7 +16,7 @@ import {
   COUPON_OPTIONS, USER_TYPE_LABELS, PLAN_PLATFORM,
   ENTERPRISE_BASE, ENTERPRISE_MAX_BUSINESSES, ENTERPRISE_USER_STEPS,
   getEnterpriseAddon, getEnterpriseUserSlabLabel,
-  calculateBreakdown, calculateUpgradeCredit, formatINR, formatINR2,
+  calculateBreakdown, calculateUpgradeCredit, calculateCustomUpgradeCredit, formatINR, formatINR2,
   MONTHLY_PRICES, MONTHLY_DISCOUNTED_FIRST_MONTH, GST_RATE,
   MONTHLY_PLAN_DAYS, MONTHLY_CREDIT_DAYS,
   calculateMonthlyBreakdown, calculateMonthlyToMonthlyUpgrade, calculateMonthlyToYearlyUpgrade,
@@ -93,6 +93,14 @@ const CheckoutCalculator = () => {
   const [useOldMultiYearDiscount, setUseOldMultiYearDiscount] = useState(
     searchParams.get("oldDiscount") === "1"
   );
+  // Custom pricing (sales-sold plans) — yearly current plans only
+  const [useCustomPricing, setUseCustomPricing] = useState(searchParams.get("custom") === "1");
+  const [customAmountPaid, setCustomAmountPaid] = useState<string>(
+    searchParams.get("customAmount") || "10000"
+  );
+  const [customEndDate, setCustomEndDate] = useState<string>(
+    searchParams.get("customEnd") || format(addDays(new Date(), 365), "yyyy-MM-dd")
+  );
 
   // Derived
   const isUpgrade = userType === "upgrade";
@@ -132,8 +140,13 @@ const CheckoutCalculator = () => {
         if (currentUserSlab !== 3) params.currentUsers = String(currentUserSlab);
       }
     }
+    if (isUpgrade && useCustomPricing && !isCurrentMonthly) {
+      params.custom = "1";
+      params.customAmount = customAmountPaid;
+      params.customEnd = customEndDate;
+    }
     setSearchParams(params, { replace: true });
-  }, [plan, duration, billingPeriod, monthlyVariant, platform, userType, coupon, customCoupon, useCustomCoupon, businesses, userSlab, currentPlan, startDate, currentDuration, currentBillingPeriod, currentBusinesses, currentUserSlab, currentPlanPurchaseType, useOldMultiYearDiscount]);
+  }, [plan, duration, billingPeriod, monthlyVariant, platform, userType, coupon, customCoupon, useCustomCoupon, businesses, userSlab, currentPlan, startDate, currentDuration, currentBillingPeriod, currentBusinesses, currentUserSlab, currentPlanPurchaseType, useOldMultiYearDiscount, useCustomPricing, customAmountPaid, customEndDate]);
 
   const effectiveCoupon = useCustomCoupon
     ? Math.min(100, Math.max(0, Number(customCoupon) || 0))
@@ -151,10 +164,14 @@ const CheckoutCalculator = () => {
   const currentEnterpriseAddon = currentEnterpriseResult?.addonCost ?? 0;
 
   // Calculate remaining days for current plan
+  const isCustomUpgrade = isUpgrade && useCustomPricing && !isCurrentMonthly;
+
   const currentPlanEndDate = isUpgrade
     ? isCurrentMonthly
       ? addDays(new Date(startDate), MONTHLY_PLAN_DAYS)
-      : addDays(new Date(startDate), DURATION_YEARS[currentDuration] * 365)
+      : isCustomUpgrade
+        ? new Date(customEndDate)
+        : addDays(new Date(startDate), DURATION_YEARS[currentDuration] * 365)
     : null;
 
   const currentRemainingDays = isUpgrade && currentPlanEndDate
@@ -170,9 +187,26 @@ const CheckoutCalculator = () => {
   const multiYearOverride = !isCurrentMonthly && currentDuration !== "1yr" && useOldMultiYearDiscount
     ? OLD_MULTI_YEAR_DISCOUNTS[currentDuration]
     : undefined;
-  const upgradeCreditResult = isUpgrade && !isCurrentMonthly
+  const customCreditResult = isCustomUpgrade
+    ? calculateCustomUpgradeCredit(Number(customAmountPaid) || 0, new Date(startDate), new Date(customEndDate))
+    : null;
+  const standardUpgradeCreditResult = isUpgrade && !isCurrentMonthly && !isCustomUpgrade
     ? calculateUpgradeCredit(currentPlan, currentDuration, new Date(startDate), isCurrentEnterprise ? currentEnterpriseAddon : 0, currentPlanPurchaseType, multiYearOverride)
     : null;
+  // Unified shape used by downstream UI/effects
+  const upgradeCreditResult = isCustomUpgrade && customCreditResult
+    ? {
+        credit: customCreditResult.credit,
+        totalPaid: customCreditResult.totalPaid,
+        ppd: customCreditResult.ppd,
+        remainingDays: customCreditResult.remainingDays,
+        totalDays: customCreditResult.totalDays,
+        multiYearDiscountPercent: 0,
+        annualDiscounted: 0,
+        years: 0,
+        subtotal: 0,
+      }
+    : standardUpgradeCreditResult;
   const yearlyUpgradeCredit = upgradeCreditResult?.credit ?? 0;
 
   // --- MONTHLY UPGRADE CREDIT ---
@@ -359,21 +393,61 @@ const CheckoutCalculator = () => {
                     </div>
                     {!isCurrentMonthly && (
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Plan Duration</Label>
-                        <Select value={currentDuration} onValueChange={(v) => setCurrentDuration(v as Duration)}>
-                          <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {DURATIONS.map((d) => (
-                              <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Label className="text-xs text-muted-foreground">
+                          {isCustomUpgrade ? "Plan End Date" : "Plan Duration"}
+                        </Label>
+                        {isCustomUpgrade ? (
+                          <Input
+                            type="date"
+                            value={customEndDate}
+                            onChange={(e) => setCustomEndDate(e.target.value)}
+                            className="bg-background"
+                          />
+                        ) : (
+                          <Select value={currentDuration} onValueChange={(v) => setCurrentDuration(v as Duration)}>
+                            <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {DURATIONS.map((d) => (
+                                <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </div>
                     )}
                   </div>
 
+                  {/* Custom pricing toggle (sales-sold plans, yearly current only) */}
+                  {!isCurrentMonthly && (
+                    <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
+                      <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={useCustomPricing}
+                          onChange={(e) => setUseCustomPricing(e.target.checked)}
+                          className="accent-amber-600"
+                        />
+                        <Info className="h-3 w-3" />
+                        Use custom pricing (sales-sold plan)
+                      </label>
+                      {isCustomUpgrade && (
+                        <div className="space-y-1.5 pl-6 max-w-xs">
+                          <Label className="text-xs text-muted-foreground">Amount Paid (ex-GST)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={customAmountPaid}
+                            onChange={(e) => setCustomAmountPaid(e.target.value)}
+                            placeholder="e.g. 12000"
+                            className="bg-background"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Purchase type for yearly Platinum/Enterprise */}
-                  {!isCurrentMonthly && (currentPlan === "platinum" || currentPlan === "enterprise") && (
+                  {!isCustomUpgrade && !isCurrentMonthly && (currentPlan === "platinum" || currentPlan === "enterprise") && (
                     <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
                       <Label className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
@@ -401,7 +475,7 @@ const CheckoutCalculator = () => {
                   )}
 
                   {/* Old vs New multi-year discount toggle (yearly only) */}
-                  {!isCurrentMonthly && currentDuration !== "1yr" && (
+                  {!isCustomUpgrade && !isCurrentMonthly && currentDuration !== "1yr" && (
                     <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
                       <Label className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
@@ -491,50 +565,83 @@ const CheckoutCalculator = () => {
                         {ppdOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                       </CollapsibleTrigger>
                       <CollapsibleContent className="space-y-1.5 text-xs text-muted-foreground pt-2">
-                        {(currentPlan === "platinum" || currentPlan === "enterprise") && (
-                          <div className="flex justify-between text-amber-700">
-                            <span>Purchase Type</span>
-                            <span className="font-medium">
-                              {currentPlanPurchaseType === "fresh" ? "First-time" : currentPlanPurchaseType === "renewal_after" ? "Renewal (after Feb '24)" : "Renewal (before Feb '24)"}
-                            </span>
-                          </div>
+                        {isCustomUpgrade ? (
+                          <>
+                            <div className="flex justify-between text-amber-700">
+                              <span>Pricing Source</span>
+                              <span className="font-medium">Custom (sales-sold)</span>
+                            </div>
+                            <div className="flex justify-between font-medium text-foreground">
+                              <span>Total Paid (ex-GST)</span>
+                              <span>{formatINR2(upgradeCreditResult.totalPaid)}</span>
+                            </div>
+                            <div className="border-t border-dashed border-amber-200 my-1" />
+                            <div className="flex justify-between">
+                              <span>Total Days (Start → End)</span>
+                              <span>{upgradeCreditResult.totalDays}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Remaining Days</span>
+                              <span>{upgradeCreditResult.remainingDays}</span>
+                            </div>
+                            <div className="flex justify-between font-medium text-foreground">
+                              <span>PPD (Total Paid ÷ Total Days)</span>
+                              <span>{formatINR2(upgradeCreditResult.ppd)}</span>
+                            </div>
+                            <div className="border-t border-dashed border-amber-200 my-1" />
+                            <div className="flex justify-between font-semibold text-emerald-700">
+                              <span>Credit (PPD × Remaining Days)</span>
+                              <span>{formatINR(upgradeCreditResult.credit)}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {(currentPlan === "platinum" || currentPlan === "enterprise") && (
+                              <div className="flex justify-between text-amber-700">
+                                <span>Purchase Type</span>
+                                <span className="font-medium">
+                                  {currentPlanPurchaseType === "fresh" ? "First-time" : currentPlanPurchaseType === "renewal_after" ? "Renewal (after Feb '24)" : "Renewal (before Feb '24)"}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex justify-between">
+                              <span>Annual Discounted Price{isCurrentEnterprise && currentEnterpriseAddon > 0 ? " (incl. addons)" : ""}</span>
+                              <span>{formatINR(upgradeCreditResult.annualDiscounted)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>× {upgradeCreditResult.years} year{upgradeCreditResult.years > 1 ? "s" : ""}</span>
+                              <span>{formatINR(upgradeCreditResult.subtotal)}</span>
+                            </div>
+                            {upgradeCreditResult.multiYearDiscountPercent > 0 && (
+                              <div className="flex justify-between text-emerald-700">
+                                <span>Multi-year discount ({upgradeCreditResult.multiYearDiscountPercent}%)</span>
+                                <span>- {formatINR(Math.round(upgradeCreditResult.subtotal * upgradeCreditResult.multiYearDiscountPercent / 100))}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between font-medium text-foreground">
+                              <span>Total Paid (ex-GST)</span>
+                              <span>{formatINR2(upgradeCreditResult.totalPaid)}</span>
+                            </div>
+                            <div className="border-t border-dashed border-amber-200 my-1" />
+                            <div className="flex justify-between">
+                              <span>Total Days</span>
+                              <span>{upgradeCreditResult.totalDays}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Remaining Days</span>
+                              <span>{upgradeCreditResult.remainingDays}</span>
+                            </div>
+                            <div className="flex justify-between font-medium text-foreground">
+                              <span>PPD (Total Paid ÷ Total Days)</span>
+                              <span>{formatINR2(upgradeCreditResult.ppd)}</span>
+                            </div>
+                            <div className="border-t border-dashed border-amber-200 my-1" />
+                            <div className="flex justify-between font-semibold text-emerald-700">
+                              <span>Credit (PPD × Remaining Days)</span>
+                              <span>{formatINR(upgradeCreditResult.credit)}</span>
+                            </div>
+                          </>
                         )}
-                        <div className="flex justify-between">
-                          <span>Annual Discounted Price{isCurrentEnterprise && currentEnterpriseAddon > 0 ? " (incl. addons)" : ""}</span>
-                          <span>{formatINR(upgradeCreditResult.annualDiscounted)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>× {upgradeCreditResult.years} year{upgradeCreditResult.years > 1 ? "s" : ""}</span>
-                          <span>{formatINR(upgradeCreditResult.subtotal)}</span>
-                        </div>
-                        {upgradeCreditResult.multiYearDiscountPercent > 0 && (
-                          <div className="flex justify-between text-emerald-700">
-                            <span>Multi-year discount ({upgradeCreditResult.multiYearDiscountPercent}%)</span>
-                            <span>- {formatINR(Math.round(upgradeCreditResult.subtotal * upgradeCreditResult.multiYearDiscountPercent / 100))}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between font-medium text-foreground">
-                          <span>Total Paid (ex-GST)</span>
-                          <span>{formatINR2(upgradeCreditResult.totalPaid)}</span>
-                        </div>
-                        <div className="border-t border-dashed border-amber-200 my-1" />
-                        <div className="flex justify-between">
-                          <span>Total Days</span>
-                          <span>{upgradeCreditResult.totalDays}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Remaining Days</span>
-                          <span>{upgradeCreditResult.remainingDays}</span>
-                        </div>
-                        <div className="flex justify-between font-medium text-foreground">
-                          <span>PPD (Total Paid ÷ Total Days)</span>
-                          <span>{formatINR2(upgradeCreditResult.ppd)}</span>
-                        </div>
-                        <div className="border-t border-dashed border-amber-200 my-1" />
-                        <div className="flex justify-between font-semibold text-emerald-700">
-                          <span>Credit (PPD × Remaining Days)</span>
-                          <span>{formatINR(upgradeCreditResult.credit)}</span>
-                        </div>
                       </CollapsibleContent>
                     </Collapsible>
                   )}
