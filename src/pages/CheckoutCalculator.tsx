@@ -140,8 +140,13 @@ const CheckoutCalculator = () => {
         if (currentUserSlab !== 3) params.currentUsers = String(currentUserSlab);
       }
     }
+    if (isUpgrade && useCustomPricing && !isCurrentMonthly) {
+      params.custom = "1";
+      params.customAmount = customAmountPaid;
+      params.customEnd = customEndDate;
+    }
     setSearchParams(params, { replace: true });
-  }, [plan, duration, billingPeriod, monthlyVariant, platform, userType, coupon, customCoupon, useCustomCoupon, businesses, userSlab, currentPlan, startDate, currentDuration, currentBillingPeriod, currentBusinesses, currentUserSlab, currentPlanPurchaseType, useOldMultiYearDiscount]);
+  }, [plan, duration, billingPeriod, monthlyVariant, platform, userType, coupon, customCoupon, useCustomCoupon, businesses, userSlab, currentPlan, startDate, currentDuration, currentBillingPeriod, currentBusinesses, currentUserSlab, currentPlanPurchaseType, useOldMultiYearDiscount, useCustomPricing, customAmountPaid, customEndDate]);
 
   const effectiveCoupon = useCustomCoupon
     ? Math.min(100, Math.max(0, Number(customCoupon) || 0))
@@ -159,10 +164,14 @@ const CheckoutCalculator = () => {
   const currentEnterpriseAddon = currentEnterpriseResult?.addonCost ?? 0;
 
   // Calculate remaining days for current plan
+  const isCustomUpgrade = isUpgrade && useCustomPricing && !isCurrentMonthly;
+
   const currentPlanEndDate = isUpgrade
     ? isCurrentMonthly
       ? addDays(new Date(startDate), MONTHLY_PLAN_DAYS)
-      : addDays(new Date(startDate), DURATION_YEARS[currentDuration] * 365)
+      : isCustomUpgrade
+        ? new Date(customEndDate)
+        : addDays(new Date(startDate), DURATION_YEARS[currentDuration] * 365)
     : null;
 
   const currentRemainingDays = isUpgrade && currentPlanEndDate
@@ -178,9 +187,26 @@ const CheckoutCalculator = () => {
   const multiYearOverride = !isCurrentMonthly && currentDuration !== "1yr" && useOldMultiYearDiscount
     ? OLD_MULTI_YEAR_DISCOUNTS[currentDuration]
     : undefined;
-  const upgradeCreditResult = isUpgrade && !isCurrentMonthly
+  const customCreditResult = isCustomUpgrade
+    ? calculateCustomUpgradeCredit(Number(customAmountPaid) || 0, new Date(startDate), new Date(customEndDate))
+    : null;
+  const standardUpgradeCreditResult = isUpgrade && !isCurrentMonthly && !isCustomUpgrade
     ? calculateUpgradeCredit(currentPlan, currentDuration, new Date(startDate), isCurrentEnterprise ? currentEnterpriseAddon : 0, currentPlanPurchaseType, multiYearOverride)
     : null;
+  // Unified shape used by downstream UI/effects
+  const upgradeCreditResult = isCustomUpgrade && customCreditResult
+    ? {
+        credit: customCreditResult.credit,
+        totalPaid: customCreditResult.totalPaid,
+        ppd: customCreditResult.ppd,
+        remainingDays: customCreditResult.remainingDays,
+        totalDays: customCreditResult.totalDays,
+        multiYearDiscountPercent: 0,
+        annualDiscounted: 0,
+        years: 0,
+        subtotal: 0,
+      }
+    : standardUpgradeCreditResult;
   const yearlyUpgradeCredit = upgradeCreditResult?.credit ?? 0;
 
   // --- MONTHLY UPGRADE CREDIT ---
