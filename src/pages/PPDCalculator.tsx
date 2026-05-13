@@ -24,6 +24,7 @@ import {
   getEnterpriseAddon,
   getEnterpriseUserSlabLabel,
   calculateUpgradeCredit,
+  calculateCustomUpgradeCredit,
   formatINR,
   formatINR2,
 } from "@/lib/pricing-data";
@@ -53,6 +54,15 @@ const PPDCalculator = () => {
   );
   const [currentUserSlab, setCurrentUserSlab] = useState<EnterpriseUserSlab>(
     (Number(searchParams.get("users")) || 3) as EnterpriseUserSlab
+  );
+
+  // Custom pricing (sales-sold plans)
+  const [useCustomPricing, setUseCustomPricing] = useState(searchParams.get("custom") === "1");
+  const [customAmountPaid, setCustomAmountPaid] = useState<string>(
+    searchParams.get("customAmount") || "10000"
+  );
+  const [customEndDate, setCustomEndDate] = useState<string>(
+    searchParams.get("customEnd") || format(addDays(new Date(), 365), "yyyy-MM-dd")
   );
 
   // Sync state to URL
