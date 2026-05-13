@@ -565,50 +565,83 @@ const CheckoutCalculator = () => {
                         {ppdOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                       </CollapsibleTrigger>
                       <CollapsibleContent className="space-y-1.5 text-xs text-muted-foreground pt-2">
-                        {(currentPlan === "platinum" || currentPlan === "enterprise") && (
-                          <div className="flex justify-between text-amber-700">
-                            <span>Purchase Type</span>
-                            <span className="font-medium">
-                              {currentPlanPurchaseType === "fresh" ? "First-time" : currentPlanPurchaseType === "renewal_after" ? "Renewal (after Feb '24)" : "Renewal (before Feb '24)"}
-                            </span>
-                          </div>
+                        {isCustomUpgrade ? (
+                          <>
+                            <div className="flex justify-between text-amber-700">
+                              <span>Pricing Source</span>
+                              <span className="font-medium">Custom (sales-sold)</span>
+                            </div>
+                            <div className="flex justify-between font-medium text-foreground">
+                              <span>Total Paid (ex-GST)</span>
+                              <span>{formatINR2(upgradeCreditResult.totalPaid)}</span>
+                            </div>
+                            <div className="border-t border-dashed border-amber-200 my-1" />
+                            <div className="flex justify-between">
+                              <span>Total Days (Start → End)</span>
+                              <span>{upgradeCreditResult.totalDays}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Remaining Days</span>
+                              <span>{upgradeCreditResult.remainingDays}</span>
+                            </div>
+                            <div className="flex justify-between font-medium text-foreground">
+                              <span>PPD (Total Paid ÷ Total Days)</span>
+                              <span>{formatINR2(upgradeCreditResult.ppd)}</span>
+                            </div>
+                            <div className="border-t border-dashed border-amber-200 my-1" />
+                            <div className="flex justify-between font-semibold text-emerald-700">
+                              <span>Credit (PPD × Remaining Days)</span>
+                              <span>{formatINR(upgradeCreditResult.credit)}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {(currentPlan === "platinum" || currentPlan === "enterprise") && (
+                              <div className="flex justify-between text-amber-700">
+                                <span>Purchase Type</span>
+                                <span className="font-medium">
+                                  {currentPlanPurchaseType === "fresh" ? "First-time" : currentPlanPurchaseType === "renewal_after" ? "Renewal (after Feb '24)" : "Renewal (before Feb '24)"}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex justify-between">
+                              <span>Annual Discounted Price{isCurrentEnterprise && currentEnterpriseAddon > 0 ? " (incl. addons)" : ""}</span>
+                              <span>{formatINR(upgradeCreditResult.annualDiscounted)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>× {upgradeCreditResult.years} year{upgradeCreditResult.years > 1 ? "s" : ""}</span>
+                              <span>{formatINR(upgradeCreditResult.subtotal)}</span>
+                            </div>
+                            {upgradeCreditResult.multiYearDiscountPercent > 0 && (
+                              <div className="flex justify-between text-emerald-700">
+                                <span>Multi-year discount ({upgradeCreditResult.multiYearDiscountPercent}%)</span>
+                                <span>- {formatINR(Math.round(upgradeCreditResult.subtotal * upgradeCreditResult.multiYearDiscountPercent / 100))}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between font-medium text-foreground">
+                              <span>Total Paid (ex-GST)</span>
+                              <span>{formatINR2(upgradeCreditResult.totalPaid)}</span>
+                            </div>
+                            <div className="border-t border-dashed border-amber-200 my-1" />
+                            <div className="flex justify-between">
+                              <span>Total Days</span>
+                              <span>{upgradeCreditResult.totalDays}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Remaining Days</span>
+                              <span>{upgradeCreditResult.remainingDays}</span>
+                            </div>
+                            <div className="flex justify-between font-medium text-foreground">
+                              <span>PPD (Total Paid ÷ Total Days)</span>
+                              <span>{formatINR2(upgradeCreditResult.ppd)}</span>
+                            </div>
+                            <div className="border-t border-dashed border-amber-200 my-1" />
+                            <div className="flex justify-between font-semibold text-emerald-700">
+                              <span>Credit (PPD × Remaining Days)</span>
+                              <span>{formatINR(upgradeCreditResult.credit)}</span>
+                            </div>
+                          </>
                         )}
-                        <div className="flex justify-between">
-                          <span>Annual Discounted Price{isCurrentEnterprise && currentEnterpriseAddon > 0 ? " (incl. addons)" : ""}</span>
-                          <span>{formatINR(upgradeCreditResult.annualDiscounted)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>× {upgradeCreditResult.years} year{upgradeCreditResult.years > 1 ? "s" : ""}</span>
-                          <span>{formatINR(upgradeCreditResult.subtotal)}</span>
-                        </div>
-                        {upgradeCreditResult.multiYearDiscountPercent > 0 && (
-                          <div className="flex justify-between text-emerald-700">
-                            <span>Multi-year discount ({upgradeCreditResult.multiYearDiscountPercent}%)</span>
-                            <span>- {formatINR(Math.round(upgradeCreditResult.subtotal * upgradeCreditResult.multiYearDiscountPercent / 100))}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between font-medium text-foreground">
-                          <span>Total Paid (ex-GST)</span>
-                          <span>{formatINR2(upgradeCreditResult.totalPaid)}</span>
-                        </div>
-                        <div className="border-t border-dashed border-amber-200 my-1" />
-                        <div className="flex justify-between">
-                          <span>Total Days</span>
-                          <span>{upgradeCreditResult.totalDays}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Remaining Days</span>
-                          <span>{upgradeCreditResult.remainingDays}</span>
-                        </div>
-                        <div className="flex justify-between font-medium text-foreground">
-                          <span>PPD (Total Paid ÷ Total Days)</span>
-                          <span>{formatINR2(upgradeCreditResult.ppd)}</span>
-                        </div>
-                        <div className="border-t border-dashed border-amber-200 my-1" />
-                        <div className="flex justify-between font-semibold text-emerald-700">
-                          <span>Credit (PPD × Remaining Days)</span>
-                          <span>{formatINR(upgradeCreditResult.credit)}</span>
-                        </div>
                       </CollapsibleContent>
                     </Collapsible>
                   )}
