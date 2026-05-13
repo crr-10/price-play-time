@@ -447,7 +447,7 @@ const CheckoutCalculator = () => {
                   )}
 
                   {/* Purchase type for yearly Platinum/Enterprise */}
-                  {!isCurrentMonthly && (currentPlan === "platinum" || currentPlan === "enterprise") && (
+                  {!isCustomUpgrade && !isCurrentMonthly && (currentPlan === "platinum" || currentPlan === "enterprise") && (
                     <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
                       <Label className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
@@ -475,7 +475,7 @@ const CheckoutCalculator = () => {
                   )}
 
                   {/* Old vs New multi-year discount toggle (yearly only) */}
-                  {!isCurrentMonthly && currentDuration !== "1yr" && (
+                  {!isCustomUpgrade && !isCurrentMonthly && currentDuration !== "1yr" && (
                     <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
                       <Label className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
