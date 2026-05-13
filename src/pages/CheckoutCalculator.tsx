@@ -393,18 +393,58 @@ const CheckoutCalculator = () => {
                     </div>
                     {!isCurrentMonthly && (
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Plan Duration</Label>
-                        <Select value={currentDuration} onValueChange={(v) => setCurrentDuration(v as Duration)}>
-                          <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {DURATIONS.map((d) => (
-                              <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Label className="text-xs text-muted-foreground">
+                          {isCustomUpgrade ? "Plan End Date" : "Plan Duration"}
+                        </Label>
+                        {isCustomUpgrade ? (
+                          <Input
+                            type="date"
+                            value={customEndDate}
+                            onChange={(e) => setCustomEndDate(e.target.value)}
+                            className="bg-background"
+                          />
+                        ) : (
+                          <Select value={currentDuration} onValueChange={(v) => setCurrentDuration(v as Duration)}>
+                            <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {DURATIONS.map((d) => (
+                                <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </div>
                     )}
                   </div>
+
+                  {/* Custom pricing toggle (sales-sold plans, yearly current only) */}
+                  {!isCurrentMonthly && (
+                    <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
+                      <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={useCustomPricing}
+                          onChange={(e) => setUseCustomPricing(e.target.checked)}
+                          className="accent-amber-600"
+                        />
+                        <Info className="h-3 w-3" />
+                        Use custom pricing (sales-sold plan)
+                      </label>
+                      {isCustomUpgrade && (
+                        <div className="space-y-1.5 pl-6 max-w-xs">
+                          <Label className="text-xs text-muted-foreground">Amount Paid (ex-GST)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={customAmountPaid}
+                            onChange={(e) => setCustomAmountPaid(e.target.value)}
+                            placeholder="e.g. 12000"
+                            className="bg-background"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Purchase type for yearly Platinum/Enterprise */}
                   {!isCurrentMonthly && (currentPlan === "platinum" || currentPlan === "enterprise") && (
