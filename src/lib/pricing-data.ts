@@ -375,6 +375,33 @@ export function calculateUpgradeCredit(
   return { credit, totalPaid, ppd, remainingDays, totalDays, multiYearDiscountPercent, annualDiscounted, years, subtotal };
 }
 
+// --- Custom Pricing Upgrade Credit (sales-team flow) ---
+// For plans sold by sales with custom amount + custom duration.
+export interface CustomUpgradeCreditResult {
+  credit: number;
+  totalPaid: number;
+  ppd: number;
+  remainingDays: number;
+  totalDays: number;
+}
+
+export function calculateCustomUpgradeCredit(
+  amountPaid: number,
+  startDate: Date,
+  endDate: Date
+): CustomUpgradeCreditResult {
+  const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+  const today = new Date();
+  const todayNorm = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const totalDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+  const remainingDays = Math.max(0, Math.round((end.getTime() - todayNorm.getTime()) / (1000 * 60 * 60 * 24)));
+  const totalPaid = Math.max(0, amountPaid);
+  const ppd = totalPaid / totalDays;
+  const credit = Math.round(ppd * remainingDays);
+  return { credit, totalPaid, ppd, remainingDays, totalDays };
+}
+
 export interface PriceBreakdown {
   originalPrice: number;
   planDiscountPercent: number;
