@@ -455,20 +455,22 @@ const CheckoutCalculator = () => {
                   )}
 
 
-                  {/* Purchase type for yearly Platinum/Enterprise.
-                      In custom-upgrade mode this drives the NEW plan's pricing tier,
-                      so show it whenever the target (or current) plan is Platinum/Enterprise. */}
+                  {/* Purchase type radio — always visible for yearly upgrades so user can pick the cohort
+                      that drives the current-plan credit (Platinum/Enterprise only differ by cohort;
+                      Silver/Diamond are flat across cohorts but we still surface the choice for clarity). */}
                   {!isCurrentMonthly && (
-                    (isCustomUpgrade && (plan === "platinum" || plan === "enterprise")) ||
-                    (!isCustomUpgrade && (currentPlan === "platinum" || currentPlan === "enterprise"))
-                  ) && (
                     <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
                       <Label className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
                         {isCustomUpgrade
                           ? "Customer category (drives new plan pricing tier)"
-                          : "How was this plan originally purchased?"}
+                          : "How was this plan originally purchased? (drives credit & new plan price)"}
                       </Label>
+                      {(currentPlan === "silver" || currentPlan === "diamond") && !isCustomUpgrade && (
+                        <p className="text-[11px] text-muted-foreground italic">
+                          Note: {currentPlan === "silver" ? "Silver" : "Diamond"} price is the same across cohorts, so credit won't change — but the new plan's price will.
+                        </p>
+                      )}
                       <div className="flex flex-col gap-1.5">
                         {([
                           { value: "fresh", label: "First-time purchase" },
