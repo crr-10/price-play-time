@@ -45,7 +45,7 @@ const CheckoutCalculator = () => {
     (["fresh", "renewal_after", "renewal_before", "upgrade"].includes(searchParams.get("userType") || "")
       ? searchParams.get("userType") as UserType : "fresh")
   );
-  const [discountOpen, setDiscountOpen] = useState(false);
+  const [discountOpen, setDiscountOpen] = useState(searchParams.get("custom") === "1");
   const [ppdOpen, setPpdOpen] = useState(false);
   const [platform, setPlatform] = useState<Platform>(
     searchParams.get("platform") === "web" ? "web" : "android"
