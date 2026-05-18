@@ -210,7 +210,7 @@ const PPDCalculator = () => {
               </label>
               {useCustomPricing && (
                 <div className="space-y-1.5 pl-6">
-                  <Label className="text-xs text-muted-foreground">Amount Paid (ex-GST)</Label>
+                  <Label className="text-xs text-muted-foreground">Amount Paid (incl. GST)</Label>
                   <Input
                     type="number"
                     min={0}
