@@ -192,7 +192,8 @@ const CheckoutCalculator = () => {
   const customCreditResult = isCustomUpgrade
     ? calculateCustomUpgradeCredit(customAmountExGst, new Date(startDate), new Date(customEndDate))
     : null;
-  const standardUpgradeCreditResult = isUpgrade && !isCurrentMonthly && !isCustomUpgrade
+  // Always compute the standard credit (even when custom override is on) so it can be shown for reference
+  const standardUpgradeCreditResult = isUpgrade && !isCurrentMonthly
     ? calculateUpgradeCredit(currentPlan, currentDuration, new Date(startDate), isCurrentEnterprise ? currentEnterpriseAddon : 0, currentPlanPurchaseType, multiYearOverride)
     : null;
   // Unified shape used by downstream UI/effects
