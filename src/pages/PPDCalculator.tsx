@@ -105,8 +105,10 @@ const PPDCalculator = () => {
     multiYearOverride
   );
 
+  // Sales inputs amount INCLUDING GST; strip GST (18%) before credit calc
+  const customAmountExGst = (Number(customAmountPaid) || 0) / 1.18;
   const customCreditResult = calculateCustomUpgradeCredit(
-    Number(customAmountPaid) || 0,
+    customAmountExGst,
     new Date(startDate),
     new Date(customEndDate)
   );
@@ -208,7 +210,7 @@ const PPDCalculator = () => {
               </label>
               {useCustomPricing && (
                 <div className="space-y-1.5 pl-6">
-                  <Label className="text-xs text-muted-foreground">Amount Paid (ex-GST)</Label>
+                  <Label className="text-xs text-muted-foreground">Amount Paid (incl. GST)</Label>
                   <Input
                     type="number"
                     min={0}
@@ -349,8 +351,12 @@ const PPDCalculator = () => {
                       <span>Pricing Source</span>
                       <span className="font-medium">Custom (sales-sold)</span>
                     </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Amount Paid (incl. GST)</span>
+                      <span>{formatINR2(Number(customAmountPaid) || 0)}</span>
+                    </div>
                     <div className="flex justify-between font-medium text-foreground">
-                      <span>Total Paid (ex-GST)</span>
+                      <span>Total Paid (ex-GST, ÷1.18)</span>
                       <span>{formatINR2(customCreditResult.totalPaid)}</span>
                     </div>
                     <div className="border-t border-dashed border-amber-200 my-1" />

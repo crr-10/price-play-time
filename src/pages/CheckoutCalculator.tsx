@@ -187,8 +187,10 @@ const CheckoutCalculator = () => {
   const multiYearOverride = !isCurrentMonthly && currentDuration !== "1yr" && useOldMultiYearDiscount
     ? OLD_MULTI_YEAR_DISCOUNTS[currentDuration]
     : undefined;
+  // Sales inputs amount INCLUDING GST; strip GST (18%) before credit calc
+  const customAmountExGst = (Number(customAmountPaid) || 0) / 1.18;
   const customCreditResult = isCustomUpgrade
-    ? calculateCustomUpgradeCredit(Number(customAmountPaid) || 0, new Date(startDate), new Date(customEndDate))
+    ? calculateCustomUpgradeCredit(customAmountExGst, new Date(startDate), new Date(customEndDate))
     : null;
   const standardUpgradeCreditResult = isUpgrade && !isCurrentMonthly && !isCustomUpgrade
     ? calculateUpgradeCredit(currentPlan, currentDuration, new Date(startDate), isCurrentEnterprise ? currentEnterpriseAddon : 0, currentPlanPurchaseType, multiYearOverride)
@@ -258,8 +260,13 @@ const CheckoutCalculator = () => {
     : null;
 
   // Yearly purchase/upgrade (existing logic)
+  // In custom upgrade mode, let the current plan purchase type drive the new plan's pricing tier
+  // (renewal_before → renewal_before pricing; fresh/renewal_after → upgrade/renewal_after pricing)
+  const effectiveBreakdownUserType: UserType = isCustomUpgrade
+    ? (currentPlanPurchaseType === "renewal_before" ? "renewal_before" : "upgrade")
+    : userType;
   const yearlyBreakdown = !isMonthly && !isCurrentMonthly
-    ? (contactSales ? null : calculateBreakdown(plan, duration, isUpgrade ? 0 : effectiveCoupon, userType, isUpgrade ? yearlyUpgradeCredit : 0, enterpriseAddon))
+    ? (contactSales ? null : calculateBreakdown(plan, duration, isUpgrade ? 0 : effectiveCoupon, effectiveBreakdownUserType, isUpgrade ? yearlyUpgradeCredit : 0, enterpriseAddon))
     : !isMonthly && isCurrentMonthly
     ? null // handled by monthlyToYearlyResult
     : null;
@@ -432,7 +439,7 @@ const CheckoutCalculator = () => {
                       </label>
                       {isCustomUpgrade && (
                         <div className="space-y-1.5 pl-6 max-w-xs">
-                          <Label className="text-xs text-muted-foreground">Amount Paid (ex-GST)</Label>
+                          <Label className="text-xs text-muted-foreground">Amount Paid (incl. GST)</Label>
                           <Input
                             type="number"
                             min={0}
@@ -447,11 +454,13 @@ const CheckoutCalculator = () => {
                   )}
 
                   {/* Purchase type for yearly Platinum/Enterprise */}
-                  {!isCustomUpgrade && !isCurrentMonthly && (currentPlan === "platinum" || currentPlan === "enterprise") && (
+                  {!isCurrentMonthly && (currentPlan === "platinum" || currentPlan === "enterprise") && (
                     <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
                       <Label className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
-                        How was this plan originally purchased?
+                        {isCustomUpgrade
+                          ? "Customer category (drives new plan pricing tier)"
+                          : "How was this plan originally purchased?"}
                       </Label>
                       <div className="flex flex-col gap-1.5">
                         {([
