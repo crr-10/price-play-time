@@ -710,6 +710,49 @@ const CheckoutCalculator = () => {
               </CardContent>
             </Card>
 
+            {/* Inline new-plan price comparison across customer categories (custom upgrade only) */}
+            {isCustomUpgrade && yearlyBreakdown && (plan === "platinum" || plan === "enterprise") && (
+              <Card className="rounded-xl border-indigo-200 bg-indigo-50/40">
+                <CardContent className="pt-4 pb-4 space-y-2">
+                  <h4 className="font-semibold text-sm text-indigo-900">
+                    New plan price by customer category
+                  </h4>
+                  <p className="text-xs text-muted-foreground -mt-1">
+                    Same plan, duration, and add-ons — only the pricing tier changes. Selected tier is highlighted.
+                  </p>
+                  <div className="mt-2 grid grid-cols-1 gap-1.5 text-xs">
+                    {([
+                      { tier: "upgrade" as UserType, label: "First-time / Renewal (after Feb '24)", matches: ["fresh", "renewal_after"] },
+                      { tier: "renewal_before" as UserType, label: "Renewal (before Feb '24)", matches: ["renewal_before"] },
+                    ]).map(({ tier, label, matches }) => {
+                      const b = calculateBreakdown(plan, duration, 0, tier, 0, enterpriseAddon);
+                      const isSelected = matches.includes(currentPlanPurchaseType);
+                      return (
+                        <div
+                          key={tier}
+                          className={`flex items-center justify-between rounded-md px-3 py-2 border ${
+                            isSelected
+                              ? "bg-indigo-100 border-indigo-300 font-medium text-indigo-900"
+                              : "bg-background border-border text-muted-foreground"
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-indigo-600" />}
+                            {label}
+                          </span>
+                          <span className="flex items-center gap-2">
+                            <span className="text-emerald-700">{b.totalDiscountPercent}% off</span>
+                            <span className="line-through opacity-60">{formatINR(b.originalPrice)}</span>
+                            <span className="font-semibold text-foreground">{formatINR(b.priceAfterCoupon)}</span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Customise Plan */}
             <Card className="rounded-xl">
               <CardContent className="pt-5 pb-6 space-y-5">
