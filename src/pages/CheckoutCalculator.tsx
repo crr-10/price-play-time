@@ -722,7 +722,7 @@ const CheckoutCalculator = () => {
             </Card>
 
             {/* Inline new-plan price comparison across customer categories (custom upgrade only) */}
-            {isCustomUpgrade && yearlyBreakdown && (plan === "platinum" || plan === "enterprise") && (
+            {isUpgrade && !isCurrentMonthly && yearlyBreakdown && (plan === "platinum" || plan === "enterprise") && (
               <Card className="rounded-xl border-indigo-200 bg-indigo-50/40">
                 <CardContent className="pt-4 pb-4 space-y-2">
                   <h4 className="font-semibold text-sm text-indigo-900">
