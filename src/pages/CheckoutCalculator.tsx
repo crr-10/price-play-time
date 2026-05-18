@@ -187,8 +187,10 @@ const CheckoutCalculator = () => {
   const multiYearOverride = !isCurrentMonthly && currentDuration !== "1yr" && useOldMultiYearDiscount
     ? OLD_MULTI_YEAR_DISCOUNTS[currentDuration]
     : undefined;
+  // Sales inputs amount INCLUDING GST; strip GST (18%) before credit calc
+  const customAmountExGst = (Number(customAmountPaid) || 0) / 1.18;
   const customCreditResult = isCustomUpgrade
-    ? calculateCustomUpgradeCredit(Number(customAmountPaid) || 0, new Date(startDate), new Date(customEndDate))
+    ? calculateCustomUpgradeCredit(customAmountExGst, new Date(startDate), new Date(customEndDate))
     : null;
   const standardUpgradeCreditResult = isUpgrade && !isCurrentMonthly && !isCustomUpgrade
     ? calculateUpgradeCredit(currentPlan, currentDuration, new Date(startDate), isCurrentEnterprise ? currentEnterpriseAddon : 0, currentPlanPurchaseType, multiYearOverride)
