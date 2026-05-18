@@ -1056,6 +1056,16 @@ const CheckoutCalculator = () => {
                   <>
                     <h3 className="font-bold text-lg mb-5">Price Details</h3>
                     <div className="space-y-3 text-sm">
+                      {isCustomUpgrade && (plan === "platinum" || plan === "enterprise") && (
+                        <div className="flex justify-between text-xs bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 -mt-2 mb-1">
+                          <span className="text-amber-800">New plan pricing tier</span>
+                          <span className="font-medium text-amber-900">
+                            {effectiveBreakdownUserType === "renewal_before"
+                              ? "Renewal (before Feb '24)"
+                              : "Upgrade / Renewal (after Feb '24)"}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Original Price</span>
                         <span className="font-medium">{formatINR(yearlyBreakdown.originalPrice)}</span>
