@@ -567,8 +567,15 @@ const CheckoutCalculator = () => {
                       </span>
                     )}
                     {!isCurrentMonthly && (
-                      <span>
-                        Credit: <strong className="text-emerald-700">{formatINR(yearlyUpgradeCredit)}</strong>
+                      <span className="flex items-center gap-3">
+                        {isCustomUpgrade && standardUpgradeCreditResult && (
+                          <span className="text-muted-foreground">
+                            Standard: <span className="line-through">{formatINR(standardUpgradeCreditResult.credit)}</span>
+                          </span>
+                        )}
+                        <span>
+                          {isCustomUpgrade ? "Custom credit" : "Credit"}: <strong className="text-emerald-700">{formatINR(yearlyUpgradeCredit)}</strong>
+                        </span>
                       </span>
                     )}
                   </div>
