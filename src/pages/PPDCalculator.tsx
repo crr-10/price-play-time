@@ -351,8 +351,12 @@ const PPDCalculator = () => {
                       <span>Pricing Source</span>
                       <span className="font-medium">Custom (sales-sold)</span>
                     </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Amount Paid (incl. GST)</span>
+                      <span>{formatINR2(Number(customAmountPaid) || 0)}</span>
+                    </div>
                     <div className="flex justify-between font-medium text-foreground">
-                      <span>Total Paid (ex-GST)</span>
+                      <span>Total Paid (ex-GST, ÷1.18)</span>
                       <span>{formatINR2(customCreditResult.totalPaid)}</span>
                     </div>
                     <div className="border-t border-dashed border-amber-200 my-1" />
