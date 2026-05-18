@@ -458,7 +458,9 @@ const CheckoutCalculator = () => {
                     <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
                       <Label className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
-                        How was this plan originally purchased?
+                        {isCustomUpgrade
+                          ? "Customer category (drives new plan pricing tier)"
+                          : "How was this plan originally purchased?"}
                       </Label>
                       <div className="flex flex-col gap-1.5">
                         {([
