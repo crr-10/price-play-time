@@ -400,26 +400,15 @@ const CheckoutCalculator = () => {
                     </div>
                     {!isCurrentMonthly && (
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">
-                          {isCustomUpgrade ? "Plan End Date" : "Plan Duration"}
-                        </Label>
-                        {isCustomUpgrade ? (
-                          <Input
-                            type="date"
-                            value={customEndDate}
-                            onChange={(e) => setCustomEndDate(e.target.value)}
-                            className="bg-background"
-                          />
-                        ) : (
-                          <Select value={currentDuration} onValueChange={(v) => setCurrentDuration(v as Duration)}>
-                            <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {DURATIONS.map((d) => (
-                                <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
+                        <Label className="text-xs text-muted-foreground">Plan Duration</Label>
+                        <Select value={currentDuration} onValueChange={(v) => setCurrentDuration(v as Duration)}>
+                          <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {DURATIONS.map((d) => (
+                              <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     )}
                   </div>
@@ -435,23 +424,35 @@ const CheckoutCalculator = () => {
                           className="accent-amber-600"
                         />
                         <Info className="h-3 w-3" />
-                        Use custom pricing (sales-sold plan)
+                        Use custom pricing (sales-sold plan) — overrides credit only
                       </label>
                       {isCustomUpgrade && (
-                        <div className="space-y-1.5 pl-6 max-w-xs">
-                          <Label className="text-xs text-muted-foreground">Amount Paid (incl. GST)</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={customAmountPaid}
-                            onChange={(e) => setCustomAmountPaid(e.target.value)}
-                            placeholder="e.g. 12000"
-                            className="bg-background"
-                          />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-6">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">Amount Paid (incl. GST)</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={customAmountPaid}
+                              onChange={(e) => setCustomAmountPaid(e.target.value)}
+                              placeholder="e.g. 12000"
+                              className="bg-background"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">Plan End Date</Label>
+                            <Input
+                              type="date"
+                              value={customEndDate}
+                              onChange={(e) => setCustomEndDate(e.target.value)}
+                              className="bg-background"
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
                   )}
+
 
                   {/* Purchase type for yearly Platinum/Enterprise.
                       In custom-upgrade mode this drives the NEW plan's pricing tier,
