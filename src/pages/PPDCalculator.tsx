@@ -105,8 +105,10 @@ const PPDCalculator = () => {
     multiYearOverride
   );
 
+  // Sales inputs amount INCLUDING GST; strip GST (18%) before credit calc
+  const customAmountExGst = (Number(customAmountPaid) || 0) / 1.18;
   const customCreditResult = calculateCustomUpgradeCredit(
-    Number(customAmountPaid) || 0,
+    customAmountExGst,
     new Date(startDate),
     new Date(customEndDate)
   );
