@@ -449,7 +449,7 @@ const CheckoutCalculator = () => {
                   )}
 
                   {/* Purchase type for yearly Platinum/Enterprise */}
-                  {!isCustomUpgrade && !isCurrentMonthly && (currentPlan === "platinum" || currentPlan === "enterprise") && (
+                  {!isCurrentMonthly && (currentPlan === "platinum" || currentPlan === "enterprise") && (
                     <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
                       <Label className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
