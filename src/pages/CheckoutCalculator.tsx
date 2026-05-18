@@ -192,7 +192,8 @@ const CheckoutCalculator = () => {
   const customCreditResult = isCustomUpgrade
     ? calculateCustomUpgradeCredit(customAmountExGst, new Date(startDate), new Date(customEndDate))
     : null;
-  const standardUpgradeCreditResult = isUpgrade && !isCurrentMonthly && !isCustomUpgrade
+  // Always compute the standard credit (even when custom override is on) so it can be shown for reference
+  const standardUpgradeCreditResult = isUpgrade && !isCurrentMonthly
     ? calculateUpgradeCredit(currentPlan, currentDuration, new Date(startDate), isCurrentEnterprise ? currentEnterpriseAddon : 0, currentPlanPurchaseType, multiYearOverride)
     : null;
   // Unified shape used by downstream UI/effects
@@ -400,26 +401,15 @@ const CheckoutCalculator = () => {
                     </div>
                     {!isCurrentMonthly && (
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">
-                          {isCustomUpgrade ? "Plan End Date" : "Plan Duration"}
-                        </Label>
-                        {isCustomUpgrade ? (
-                          <Input
-                            type="date"
-                            value={customEndDate}
-                            onChange={(e) => setCustomEndDate(e.target.value)}
-                            className="bg-background"
-                          />
-                        ) : (
-                          <Select value={currentDuration} onValueChange={(v) => setCurrentDuration(v as Duration)}>
-                            <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {DURATIONS.map((d) => (
-                                <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
+                        <Label className="text-xs text-muted-foreground">Plan Duration</Label>
+                        <Select value={currentDuration} onValueChange={(v) => setCurrentDuration(v as Duration)}>
+                          <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {DURATIONS.map((d) => (
+                              <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     )}
                   </div>
@@ -435,23 +425,35 @@ const CheckoutCalculator = () => {
                           className="accent-amber-600"
                         />
                         <Info className="h-3 w-3" />
-                        Use custom pricing (sales-sold plan)
+                        Use custom pricing (sales-sold plan) — overrides credit only
                       </label>
                       {isCustomUpgrade && (
-                        <div className="space-y-1.5 pl-6 max-w-xs">
-                          <Label className="text-xs text-muted-foreground">Amount Paid (incl. GST)</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={customAmountPaid}
-                            onChange={(e) => setCustomAmountPaid(e.target.value)}
-                            placeholder="e.g. 12000"
-                            className="bg-background"
-                          />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-6">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">Amount Paid (incl. GST)</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={customAmountPaid}
+                              onChange={(e) => setCustomAmountPaid(e.target.value)}
+                              placeholder="e.g. 12000"
+                              className="bg-background"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">Plan End Date</Label>
+                            <Input
+                              type="date"
+                              value={customEndDate}
+                              onChange={(e) => setCustomEndDate(e.target.value)}
+                              className="bg-background"
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
                   )}
+
 
                   {/* Purchase type for yearly Platinum/Enterprise.
                       In custom-upgrade mode this drives the NEW plan's pricing tier,
@@ -489,7 +491,7 @@ const CheckoutCalculator = () => {
                   )}
 
                   {/* Old vs New multi-year discount toggle (yearly only) */}
-                  {!isCustomUpgrade && !isCurrentMonthly && currentDuration !== "1yr" && (
+                  {!isCurrentMonthly && currentDuration !== "1yr" && (
                     <div className="mt-4 pt-3 border-t border-amber-200 space-y-2">
                       <Label className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
@@ -565,8 +567,15 @@ const CheckoutCalculator = () => {
                       </span>
                     )}
                     {!isCurrentMonthly && (
-                      <span>
-                        Credit: <strong className="text-emerald-700">{formatINR(yearlyUpgradeCredit)}</strong>
+                      <span className="flex items-center gap-3">
+                        {isCustomUpgrade && standardUpgradeCreditResult && (
+                          <span className="text-muted-foreground">
+                            Standard: <span className="line-through">{formatINR(standardUpgradeCreditResult.credit)}</span>
+                          </span>
+                        )}
+                        <span>
+                          {isCustomUpgrade ? "Custom credit" : "Credit"}: <strong className="text-emerald-700">{formatINR(yearlyUpgradeCredit)}</strong>
+                        </span>
                       </span>
                     )}
                   </div>
