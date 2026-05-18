@@ -260,8 +260,13 @@ const CheckoutCalculator = () => {
     : null;
 
   // Yearly purchase/upgrade (existing logic)
+  // In custom upgrade mode, let the current plan purchase type drive the new plan's pricing tier
+  // (renewal_before → renewal_before pricing; fresh/renewal_after → upgrade/renewal_after pricing)
+  const effectiveBreakdownUserType: UserType = isCustomUpgrade
+    ? (currentPlanPurchaseType === "renewal_before" ? "renewal_before" : "upgrade")
+    : userType;
   const yearlyBreakdown = !isMonthly && !isCurrentMonthly
-    ? (contactSales ? null : calculateBreakdown(plan, duration, isUpgrade ? 0 : effectiveCoupon, userType, isUpgrade ? yearlyUpgradeCredit : 0, enterpriseAddon))
+    ? (contactSales ? null : calculateBreakdown(plan, duration, isUpgrade ? 0 : effectiveCoupon, effectiveBreakdownUserType, isUpgrade ? yearlyUpgradeCredit : 0, enterpriseAddon))
     : !isMonthly && isCurrentMonthly
     ? null // handled by monthlyToYearlyResult
     : null;
