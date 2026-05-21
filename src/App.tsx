@@ -23,6 +23,7 @@ const App = () => (
           <Route path="/calculator" element={<CheckoutCalculator />} />
           <Route path="/ppd-calculator" element={<PPDCalculator />} />
           <Route path="/qa" element={<QAChecklist />} />
+          <Route path="/pricing-rules" element={<PricingRules />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
