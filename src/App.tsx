@@ -7,6 +7,7 @@ import PlanListValidation from "./pages/PlanListValidation";
 import CheckoutCalculator from "./pages/CheckoutCalculator";
 import PPDCalculator from "./pages/PPDCalculator";
 import QAChecklist from "./pages/QAChecklist";
+import PricingRules from "./pages/PricingRules";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
