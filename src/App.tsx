@@ -7,6 +7,7 @@ import PlanListValidation from "./pages/PlanListValidation";
 import CheckoutCalculator from "./pages/CheckoutCalculator";
 import PPDCalculator from "./pages/PPDCalculator";
 import QAChecklist from "./pages/QAChecklist";
+import PricingRules from "./pages/PricingRules";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/calculator" element={<CheckoutCalculator />} />
           <Route path="/ppd-calculator" element={<PPDCalculator />} />
           <Route path="/qa" element={<QAChecklist />} />
+          <Route path="/pricing-rules" element={<PricingRules />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
