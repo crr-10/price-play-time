@@ -490,8 +490,17 @@ export function calculateBreakdown(
 }
 
 export const USER_TYPE_LABELS: Record<UserType, string> = {
-  fresh: "Fresh Plan Purchase",
+  fresh: "Fresh — Before 22 Jun 2026 (legacy catalog)",
+  fresh_v2_2026: "Fresh — After 22 Jun 2026 (new catalog)",
   renewal_after: "Renewal (after 16 Feb 2024)",
   renewal_before: "Renewal (before 16 Feb 2024)",
   upgrade: "Upgrade (existing user)",
+};
+
+// Monthly prices for the new (post-22-Jun-2026) catalog. Advanced is sales-touch only.
+export const MONTHLY_PRICES_V2: Record<PlanName, number | null> = {
+  silver: 199,
+  diamond: 349,
+  platinum: 399,
+  enterprise: null,
 };
