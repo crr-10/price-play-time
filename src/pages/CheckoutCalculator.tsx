@@ -88,7 +88,7 @@ const CheckoutCalculator = () => {
     (Number(searchParams.get("currentUsers")) || 3) as EnterpriseUserSlab
   );
   const [currentPlanPurchaseType, setCurrentPlanPurchaseType] = useState<UserType>(
-    (["fresh", "renewal_after", "renewal_before"].includes(searchParams.get("purchaseType") || "")
+    (PURCHASE_TYPES.includes(searchParams.get("purchaseType") as UserType)
       ? searchParams.get("purchaseType") as UserType : "fresh")
   );
   const [useOldMultiYearDiscount, setUseOldMultiYearDiscount] = useState(
