@@ -51,6 +51,7 @@ const PLAN_META: { name: string; key: PlanName; discountPercent: number; actualD
 
 const ANNUAL_PRICES: Record<string, Record<PlanName, number>> = {
   fresh: { silver: 399, diamond: 2599, platinum: 2999, enterprise: 4999 },
+  fresh_v2_2026: { silver: 1990, diamond: 3490, platinum: 3990, enterprise: 6840 },
   renewal_after: { silver: 399, diamond: 2599, platinum: 3999, enterprise: 5999 },
   renewal_before: { silver: 399, diamond: 2599, platinum: 5999, enterprise: 8999 },
 };
