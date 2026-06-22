@@ -394,13 +394,13 @@ const PlanListValidation = () => {
               </div>
               <CardContent className="pt-6 pb-6 space-y-4">
                 <div>
-                  <h2 className="text-xl font-bold">{currentPlanInfo.name} Plan</h2>
+                  <h2 className="text-xl font-bold">{getPlanDisplayName(currentPlan, userType)} Plan</h2>
                   <p className="text-sm text-emerald-600 mt-0.5">{PLAN_DESCRIPTIONS[currentPlan]}</p>
                 </div>
                 <div className="pt-2">
                   {currentBillingPeriod === "monthly" ? (
                     <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold">{formatINR(MONTHLY_PRICES[currentPlan])}</span>
+                      <span className="text-3xl font-bold">{formatINR(monthlyPriceFor(currentPlan))}</span>
                       <span className="text-sm text-muted-foreground">/month</span>
                     </div>
                   ) : (
