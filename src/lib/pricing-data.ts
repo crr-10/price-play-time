@@ -497,10 +497,21 @@ export const USER_TYPE_LABELS: Record<UserType, string> = {
   upgrade: "Upgrade (existing user)",
 };
 
-// Monthly prices for the new (post-22-Jun-2026) catalog. Advanced is sales-touch only.
-export const MONTHLY_PRICES_V2: Record<PlanName, number | null> = {
+// Monthly prices for the new (post-22-Jun-2026) catalog. Advanced is sales-touch (price shown for reference).
+export const MONTHLY_PRICES_V2: Record<PlanName, number> = {
   silver: 199,
   diamond: 349,
   platinum: 399,
-  enterprise: null,
+  enterprise: 689,
 };
+
+// Quarterly prices for the new (post-22-Jun-2026) catalog. Advanced is sales-touch.
+export const QUARTERLY_PRICES_V2: Record<PlanName, number> = {
+  silver: 549,
+  diamond: 949,
+  platinum: 1099,
+  enterprise: 1899,
+};
+
+// Advanced (Enterprise) is not self-serve in the new catalog
+export const V2_SALES_TOUCH_PLANS: PlanName[] = ["enterprise"];

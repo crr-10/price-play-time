@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   PLANS_BY_TYPE, ANNUAL_DISCOUNTED, MULTI_YEAR_DISCOUNTS, OLD_MULTI_YEAR_DISCOUNTS,
-  MONTHLY_PRICES, MONTHLY_DISCOUNTED_FIRST_MONTH, MONTHLY_PRICES_V2, GST_RATE, COUPON_OPTIONS,
+  MONTHLY_PRICES, MONTHLY_DISCOUNTED_FIRST_MONTH, MONTHLY_PRICES_V2, QUARTERLY_PRICES_V2, V2_SALES_TOUCH_PLANS, GST_RATE, COUPON_OPTIONS,
   ENTERPRISE_BASE, ENTERPRISE_EXTRA_BUSINESS_COST, ENTERPRISE_USER_SLAB_COSTS,
   ENTERPRISE_MAX_BUSINESSES, ENTERPRISE_MAX_USERS, PLAN_PLATFORM,
   ACTUAL_PLAN_DISCOUNTS, PLAN_DISPLAY_NAMES_V2, NEW_CATALOG_CUTOFF, formatINR,
@@ -184,28 +184,22 @@ const PricingRules = () => {
         </SectionCard>
 
         {/* 7. Monthly */}
-        <SectionCard title="7. Monthly Plans">
+        <SectionCard title="7. Monthly Plans (legacy)">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-100">
                 <tr>
-                  <th className="text-left p-2">Plan (legacy → new)</th>
-                  <th className="text-right p-2">Legacy monthly</th>
+                  <th className="text-left p-2">Plan</th>
+                  <th className="text-right p-2">Monthly price</th>
                   <th className="text-right p-2">1st month (Exp A)</th>
-                  <th className="text-right p-2">New monthly (post 22 Jun 2026)</th>
                 </tr>
               </thead>
               <tbody>
                 {PLAN_ORDER.map((p) => (
                   <tr key={p} className="border-b">
-                    <td className="p-2 capitalize">
-                      {p} <span className="text-muted-foreground">→ {PLAN_DISPLAY_NAMES_V2[p]}</span>
-                    </td>
+                    <td className="p-2 capitalize">{p}</td>
                     <td className="p-2 text-right">{formatINR(MONTHLY_PRICES[p])}</td>
                     <td className="p-2 text-right">{formatINR(MONTHLY_DISCOUNTED_FIRST_MONTH[p])}</td>
-                    <td className="p-2 text-right text-emerald-700 font-medium">
-                      {MONTHLY_PRICES_V2[p] == null ? "Not self-serve" : formatINR(MONTHLY_PRICES_V2[p] as number)}
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -213,6 +207,51 @@ const PricingRules = () => {
           </div>
           <Row label="Duration" value="31 days; credit calc uses 30-day basis" />
           <Row label="Coupons" value="Not applicable" />
+        </SectionCard>
+
+        {/* 7b. New catalog billing cycles */}
+        <SectionCard title="7b. New Catalog — Monthly / Quarterly / Yearly" badge="Post 22 Jun 2026">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-100">
+                <tr>
+                  <th className="text-left p-2">Plan (legacy → new)</th>
+                  <th className="text-right p-2">Monthly</th>
+                  <th className="text-right p-2">Quarterly</th>
+                  <th className="text-right p-2">Yearly</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PLAN_ORDER.map((p) => {
+                  const salesTouch = V2_SALES_TOUCH_PLANS.includes(p);
+                  return (
+                    <tr key={p} className="border-b">
+                      <td className="p-2 capitalize font-medium">
+                        {p} <span className="text-muted-foreground">→ {PLAN_DISPLAY_NAMES_V2[p]}</span>
+                      </td>
+                      <td className="p-2 text-right">
+                        {salesTouch && <span className="text-xs text-amber-700 mr-1">Talk to sales</span>}
+                        {formatINR(MONTHLY_PRICES_V2[p])}/mo
+                      </td>
+                      <td className="p-2 text-right">
+                        {salesTouch && <span className="text-xs text-amber-700 mr-1">Talk to sales</span>}
+                        {formatINR(QUARTERLY_PRICES_V2[p])}/qtr
+                      </td>
+                      <td className="p-2 text-right">
+                        {salesTouch && <span className="text-xs text-amber-700 mr-1">Talk to sales</span>}
+                        {formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026[p])}/yr
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-muted-foreground pt-2">
+            Quarterly is a brand-new billing cycle introduced with the post-22-Jun-2026 catalog
+            (legacy cohorts have only monthly &amp; yearly). Advanced (Enterprise) prices are shown
+            for reference but the plan is sales-touch only.
+          </p>
         </SectionCard>
 
         {/* 8. Upgrade rules */}
