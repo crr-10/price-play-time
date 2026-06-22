@@ -47,7 +47,7 @@ const PlanListValidation = () => {
   const navigate = useNavigate();
 
   const [userType, setUserType] = useState<UserType>(
-    (["fresh", "renewal_after", "renewal_before", "upgrade"].includes(searchParams.get("userType") || "")
+    (USER_TYPES.includes(searchParams.get("userType") as UserType)
       ? searchParams.get("userType") as UserType : "fresh")
   );
   const [platform, setPlatform] = useState<Platform>(
