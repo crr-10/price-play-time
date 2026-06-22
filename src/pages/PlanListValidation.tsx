@@ -9,13 +9,16 @@ import { Input } from "@/components/ui/input";
 import {
   PLANS_BY_TYPE, USER_TYPE_LABELS, DURATIONS, DURATION_YEARS, calculateUpgradeCredit, formatINR,
   PLAN_PLATFORM, ENTERPRISE_BASE, ENTERPRISE_MAX_BUSINESSES, ENTERPRISE_USER_STEPS,
-  getEnterpriseUserSlabLabel, MONTHLY_PRICES, MONTHLY_DISCOUNTED_FIRST_MONTH, GST_RATE,
+  getEnterpriseUserSlabLabel, MONTHLY_PRICES, MONTHLY_PRICES_V2, QUARTERLY_PRICES_V2,
+  MONTHLY_DISCOUNTED_FIRST_MONTH, GST_RATE, getPlanDisplayName, V2_SALES_TOUCH_PLANS,
   type UserType, type PlanName, type Duration, type Platform, type EnterpriseUserSlab,
   type BillingPeriod, type MonthlyVariant,
 } from "@/lib/pricing-data";
 import { Crown, AlertCircle, Plus, Minus, Link2 } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { toast } from "sonner";
+
+type ViewBilling = "monthly" | "quarterly" | "yearly";
 
 const PLAN_BORDERS: Record<PlanName, string> = {
   silver: "border-t-4 border-t-amber-400",
@@ -53,8 +56,9 @@ const PlanListValidation = () => {
   const [platform, setPlatform] = useState<Platform>(
     searchParams.get("platform") === "web" ? "web" : "android"
   );
-  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>(
-    searchParams.get("billing") === "yearly" ? "yearly" : "monthly"
+  const [billingPeriod, setBillingPeriod] = useState<ViewBilling>(
+    (["yearly", "quarterly", "monthly"].includes(searchParams.get("billing") || "")
+      ? (searchParams.get("billing") as ViewBilling) : "monthly")
   );
   const [monthlyVariant, setMonthlyVariant] = useState<MonthlyVariant>(
     searchParams.get("variant") === "B" ? "B" : "A"
@@ -103,6 +107,16 @@ const PlanListValidation = () => {
   }, [platform, billingPeriod, monthlyVariant, userType, currentPlan, currentDuration, currentBillingPeriod, startDate, currentBusinesses, currentUserSlab]);
 
   const isMonthly = billingPeriod === "monthly";
+  const isQuarterly = billingPeriod === "quarterly";
+  const isV2 = userType === "fresh_v2_2026";
+
+  // If quarterly selected but cohort is not v2, fall back to monthly
+  useEffect(() => {
+    if (isQuarterly && !isV2) setBillingPeriod("monthly");
+  }, [isQuarterly, isV2]);
+
+  const monthlyPriceFor = (plan: PlanName) => isV2 ? MONTHLY_PRICES_V2[plan] : MONTHLY_PRICES[plan];
+  const quarterlyPriceFor = (plan: PlanName) => QUARTERLY_PRICES_V2[plan];
 
   const isUpgrade = userType === "upgrade";
   const isCurrentEnterprise = currentPlan === "enterprise";
@@ -203,7 +217,7 @@ const PlanListValidation = () => {
           </p>
         )}
 
-        {/* Monthly / Yearly Tab */}
+        {/* Monthly / Quarterly / Yearly Tab */}
         {(
           <div className="flex items-center justify-center gap-2 mb-6">
             <div className="inline-flex rounded-lg border bg-muted p-1">
@@ -215,9 +229,19 @@ const PlanListValidation = () => {
               >
                 Monthly
               </button>
+              {isV2 && (
+                <button
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isQuarterly ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  onClick={() => setBillingPeriod("quarterly")}
+                >
+                  Quarterly
+                </button>
+              )}
               <button
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors relative ${
-                  !isMonthly ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  billingPeriod === "yearly" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
                 onClick={() => setBillingPeriod("yearly")}
               >
@@ -228,7 +252,7 @@ const PlanListValidation = () => {
               </button>
             </div>
 
-{isMonthly && (
+{isMonthly && !isV2 && (
               <div className="flex items-center gap-2 ml-4">
                 <Label className="text-xs text-muted-foreground">Experiment:</Label>
                 <Select value={monthlyVariant} onValueChange={(v) => setMonthlyVariant(v as MonthlyVariant)}>
@@ -370,13 +394,13 @@ const PlanListValidation = () => {
               </div>
               <CardContent className="pt-6 pb-6 space-y-4">
                 <div>
-                  <h2 className="text-xl font-bold">{currentPlanInfo.name} Plan</h2>
+                  <h2 className="text-xl font-bold">{getPlanDisplayName(currentPlan, userType)} Plan</h2>
                   <p className="text-sm text-emerald-600 mt-0.5">{PLAN_DESCRIPTIONS[currentPlan]}</p>
                 </div>
                 <div className="pt-2">
                   {currentBillingPeriod === "monthly" ? (
                     <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold">{formatINR(MONTHLY_PRICES[currentPlan])}</span>
+                      <span className="text-3xl font-bold">{formatINR(monthlyPriceFor(currentPlan))}</span>
                       <span className="text-sm text-muted-foreground">/month</span>
                     </div>
                   ) : (
@@ -415,32 +439,51 @@ const PlanListValidation = () => {
 
               <CardContent className="pt-6 pb-6 space-y-4">
                 <div>
-                  <h2 className="text-xl font-bold">{plan.name} Plan</h2>
+                  <h2 className="text-xl font-bold">{getPlanDisplayName(plan.key, userType)} Plan</h2>
                   <p className="text-sm text-emerald-600 mt-0.5">{PLAN_DESCRIPTIONS[plan.key]}</p>
                 </div>
 
-                {isMonthly ? (
+                {isV2 && V2_SALES_TOUCH_PLANS.includes(plan.key) && !(billingPeriod === "yearly") ? (
+                  <div className="pt-2">
+                    <p className="text-sm font-medium">Talk to sales</p>
+                    <p className="text-xs text-muted-foreground mt-1">Not available on {billingPeriod} billing</p>
+                  </div>
+                ) : isMonthly ? (
                   /* Monthly pricing */
                   <div className="pt-2">
-                    {monthlyVariant === "A" ? (
+                    {!isV2 && monthlyVariant === "A" ? (
                       <>
                         <div className="flex items-baseline gap-2">
                           <span className="text-muted-foreground line-through text-base">
-                            {formatINR(MONTHLY_PRICES[plan.key])}
+                            {formatINR(monthlyPriceFor(plan.key))}
                           </span>
                           <span className="text-3xl font-bold">{formatINR(MONTHLY_DISCOUNTED_FIRST_MONTH[plan.key])}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">for 1st month</p>
-                        <p className="text-xs text-muted-foreground">then {formatINR(MONTHLY_PRICES[plan.key])}/month</p>
+                        <p className="text-xs text-muted-foreground">then {formatINR(monthlyPriceFor(plan.key))}/month</p>
                       </>
                     ) : (
                       <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-bold">{formatINR(MONTHLY_PRICES[plan.key])}</span>
+                        <span className="text-3xl font-bold">{formatINR(monthlyPriceFor(plan.key))}</span>
                         <span className="text-sm text-muted-foreground">/month</span>
                       </div>
                     )}
                     <p className="text-xs text-muted-foreground mt-2">
                       Renews automatically every month. Cancel anytime
+                    </p>
+                  </div>
+                ) : isQuarterly ? (
+                  /* Quarterly pricing (v2 only) */
+                  <div className="pt-2">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-bold">{formatINR(quarterlyPriceFor(plan.key))}</span>
+                      <span className="text-sm text-muted-foreground">/quarter</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ≈ {formatINR(Math.round(quarterlyPriceFor(plan.key) / 3))}/month
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Renews automatically every 3 months. Cancel anytime
                     </p>
                   </div>
                 ) : (
@@ -475,11 +518,12 @@ const PlanListValidation = () => {
                   variant="outline"
                   className={`w-full mt-2 font-semibold ${PLAN_BUTTON_STYLES[plan.key]}`}
                   onClick={() => goToCheckout(plan.key)}
+                  disabled={isV2 && V2_SALES_TOUCH_PLANS.includes(plan.key) && billingPeriod !== "yearly"}
                 >
-                  {isUpgrade ? `Upgrade to ${plan.name}` : `Buy ${plan.name} Plan`}
+                  {isUpgrade ? `Upgrade to ${getPlanDisplayName(plan.key, userType)}` : `Buy ${getPlanDisplayName(plan.key, userType)} Plan`}
                 </Button>
 
-                {!isUpgrade && !isMonthly && (plan.key === "platinum" || plan.key === "enterprise") && (
+                {!isUpgrade && billingPeriod === "yearly" && (plan.key === "platinum" || plan.key === "enterprise") && (
                   <p className="text-xs text-emerald-600 text-center flex items-center justify-center gap-1">
                     <span>✓</span> Up to 65% off - Talk to Sales
                   </p>
