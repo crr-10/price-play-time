@@ -439,32 +439,51 @@ const PlanListValidation = () => {
 
               <CardContent className="pt-6 pb-6 space-y-4">
                 <div>
-                  <h2 className="text-xl font-bold">{plan.name} Plan</h2>
+                  <h2 className="text-xl font-bold">{getPlanDisplayName(plan.key, userType)} Plan</h2>
                   <p className="text-sm text-emerald-600 mt-0.5">{PLAN_DESCRIPTIONS[plan.key]}</p>
                 </div>
 
-                {isMonthly ? (
+                {isV2 && V2_SALES_TOUCH_PLANS.includes(plan.key) && !(billingPeriod === "yearly") ? (
+                  <div className="pt-2">
+                    <p className="text-sm font-medium">Talk to sales</p>
+                    <p className="text-xs text-muted-foreground mt-1">Not available on {billingPeriod} billing</p>
+                  </div>
+                ) : isMonthly ? (
                   /* Monthly pricing */
                   <div className="pt-2">
-                    {monthlyVariant === "A" ? (
+                    {!isV2 && monthlyVariant === "A" ? (
                       <>
                         <div className="flex items-baseline gap-2">
                           <span className="text-muted-foreground line-through text-base">
-                            {formatINR(MONTHLY_PRICES[plan.key])}
+                            {formatINR(monthlyPriceFor(plan.key))}
                           </span>
                           <span className="text-3xl font-bold">{formatINR(MONTHLY_DISCOUNTED_FIRST_MONTH[plan.key])}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">for 1st month</p>
-                        <p className="text-xs text-muted-foreground">then {formatINR(MONTHLY_PRICES[plan.key])}/month</p>
+                        <p className="text-xs text-muted-foreground">then {formatINR(monthlyPriceFor(plan.key))}/month</p>
                       </>
                     ) : (
                       <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-bold">{formatINR(MONTHLY_PRICES[plan.key])}</span>
+                        <span className="text-3xl font-bold">{formatINR(monthlyPriceFor(plan.key))}</span>
                         <span className="text-sm text-muted-foreground">/month</span>
                       </div>
                     )}
                     <p className="text-xs text-muted-foreground mt-2">
                       Renews automatically every month. Cancel anytime
+                    </p>
+                  </div>
+                ) : isQuarterly ? (
+                  /* Quarterly pricing (v2 only) */
+                  <div className="pt-2">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-bold">{formatINR(quarterlyPriceFor(plan.key))}</span>
+                      <span className="text-sm text-muted-foreground">/quarter</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ≈ {formatINR(Math.round(quarterlyPriceFor(plan.key) / 3))}/month
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Renews automatically every 3 months. Cancel anytime
                     </p>
                   </div>
                 ) : (
@@ -499,11 +518,12 @@ const PlanListValidation = () => {
                   variant="outline"
                   className={`w-full mt-2 font-semibold ${PLAN_BUTTON_STYLES[plan.key]}`}
                   onClick={() => goToCheckout(plan.key)}
+                  disabled={isV2 && V2_SALES_TOUCH_PLANS.includes(plan.key) && billingPeriod !== "yearly"}
                 >
-                  {isUpgrade ? `Upgrade to ${plan.name}` : `Buy ${plan.name} Plan`}
+                  {isUpgrade ? `Upgrade to ${getPlanDisplayName(plan.key, userType)}` : `Buy ${getPlanDisplayName(plan.key, userType)} Plan`}
                 </Button>
 
-                {!isUpgrade && !isMonthly && (plan.key === "platinum" || plan.key === "enterprise") && (
+                {!isUpgrade && billingPeriod === "yearly" && (plan.key === "platinum" || plan.key === "enterprise") && (
                   <p className="text-xs text-emerald-600 text-center flex items-center justify-center gap-1">
                     <span>✓</span> Up to 65% off - Talk to Sales
                   </p>
