@@ -23,7 +23,8 @@ import {
   calculateMonthlyUpgradeCredit,
 } from "@/lib/pricing-data";
 
-const USER_TYPES: UserType[] = ["fresh", "renewal_after", "renewal_before", "upgrade"];
+const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "renewal_after", "renewal_before", "upgrade"];
+const PURCHASE_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "renewal_after", "renewal_before"];
 const PLAN_ORDER: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
 
 const CheckoutCalculator = () => {
