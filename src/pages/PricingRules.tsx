@@ -120,34 +120,6 @@ const PricingRules = () => {
           </p>
         </SectionCard>
 
-        {/* 2. Annual base prices */}
-        <SectionCard title="2. Annual Base Prices (Ex-GST, ₹)" badge="Per cohort">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-100">
-                <tr>
-                  <th className="text-left p-2">Plan</th>
-                  <th className="text-right p-2">Fresh</th>
-                  <th className="text-right p-2">Renewal After</th>
-                  <th className="text-right p-2">Renewal Before</th>
-                </tr>
-              </thead>
-              <tbody>
-                {PLAN_ORDER.map((p) => (
-                  <tr key={p} className="border-b">
-                    <td className="p-2 capitalize font-medium">{p}</td>
-                    <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.fresh[p])}</td>
-                    <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.renewal_after[p])}</td>
-                    <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.renewal_before[p])}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-xs text-muted-foreground pt-2">
-            Silver &amp; Diamond are constant across cohorts. Only Platinum &amp; Enterprise differ.
-          </p>
-        </SectionCard>
 
         {/* 3. Plan discount */}
         <SectionCard title="3. Plan-Level Discount (vs MRP)">
