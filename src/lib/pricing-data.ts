@@ -78,6 +78,7 @@ function buildPlans(userType: UserType): PlanInfo[] {
 
 export const PLANS_BY_TYPE: Record<UserType, PlanInfo[]> = {
   fresh: buildPlans("fresh"),
+  fresh_v2_2026: buildPlans("fresh_v2_2026"),
   renewal_after: buildPlans("renewal_after"),
   renewal_before: buildPlans("renewal_before"),
   upgrade: buildPlans("upgrade"),
@@ -103,6 +104,7 @@ function buildMrpTable(userType: UserType): Record<PlanName, Record<Duration, nu
 
 export const MRP_TABLES: Record<UserType, Record<PlanName, Record<Duration, number>>> = {
   fresh: buildMrpTable("fresh"),
+  fresh_v2_2026: buildMrpTable("fresh_v2_2026"),
   renewal_after: buildMrpTable("renewal_after"),
   renewal_before: buildMrpTable("renewal_before"),
   upgrade: buildMrpTable("upgrade"),
@@ -114,6 +116,7 @@ export const MRP_TABLE_RENEWAL = MRP_TABLES.renewal_after;
 
 export const ANNUAL_DISCOUNTED: Record<UserType, Record<PlanName, number>> = {
   fresh: { silver: 399, diamond: 2599, platinum: 2999, enterprise: 4999 },
+  fresh_v2_2026: { silver: 1990, diamond: 3490, platinum: 3990, enterprise: 6840 },
   renewal_after: { silver: 399, diamond: 2599, platinum: 3999, enterprise: 5999 },
   renewal_before: { silver: 399, diamond: 2599, platinum: 5999, enterprise: 8999 },
   upgrade: { silver: 399, diamond: 2599, platinum: 3999, enterprise: 5999 },
