@@ -39,14 +39,15 @@ const PLAN_DESCRIPTIONS: Record<PlanName, string> = {
 };
 
 const PLAN_ORDER: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
-const USER_TYPES: UserType[] = ["fresh", "renewal_after", "renewal_before", "upgrade"];
+const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "renewal_after", "renewal_before", "upgrade"];
+
 
 const PlanListValidation = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const [userType, setUserType] = useState<UserType>(
-    (["fresh", "renewal_after", "renewal_before", "upgrade"].includes(searchParams.get("userType") || "")
+    (USER_TYPES.includes(searchParams.get("userType") as UserType)
       ? searchParams.get("userType") as UserType : "fresh")
   );
   const [platform, setPlatform] = useState<Platform>(

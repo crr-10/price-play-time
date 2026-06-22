@@ -11,7 +11,25 @@ export const PLAN_PLATFORM: Record<PlanName, Platform[]> = {
   enterprise: ["android", "web"],
 };
 export type Duration = "1yr" | "2yr" | "3yr" | "4yr" | "5yr" | "6yr" | "7yr" | "8yr" | "9yr" | "10yr";
-export type UserType = "fresh" | "renewal_after" | "renewal_before" | "upgrade";
+export type UserType = "fresh" | "fresh_v2_2026" | "renewal_after" | "renewal_before" | "upgrade";
+
+// Cutoff: users whose first purchase is on/after this date see the new catalog
+// (Starter / Standard / Growth / Advanced).
+export const NEW_CATALOG_CUTOFF = "2026-06-22";
+
+// Renamed plan display names for the new (post-22-Jun-2026) catalog cohort
+export const PLAN_DISPLAY_NAMES_V2: Record<PlanName, string> = {
+  silver: "Starter",
+  diamond: "Standard",
+  platinum: "Growth",
+  enterprise: "Advanced",
+};
+
+export function getPlanDisplayName(plan: PlanName, cohort: UserType): string {
+  if (cohort === "fresh_v2_2026") return PLAN_DISPLAY_NAMES_V2[plan];
+  // Capitalised first letter of plan key
+  return plan.charAt(0).toUpperCase() + plan.slice(1);
+}
 
 export interface PlanInfo {
   name: string;
@@ -33,6 +51,7 @@ const PLAN_META: { name: string; key: PlanName; discountPercent: number; actualD
 
 const ANNUAL_PRICES: Record<string, Record<PlanName, number>> = {
   fresh: { silver: 399, diamond: 2599, platinum: 2999, enterprise: 4999 },
+  fresh_v2_2026: { silver: 1990, diamond: 3490, platinum: 3990, enterprise: 6840 },
   renewal_after: { silver: 399, diamond: 2599, platinum: 3999, enterprise: 5999 },
   renewal_before: { silver: 399, diamond: 2599, platinum: 5999, enterprise: 8999 },
 };
@@ -59,6 +78,7 @@ function buildPlans(userType: UserType): PlanInfo[] {
 
 export const PLANS_BY_TYPE: Record<UserType, PlanInfo[]> = {
   fresh: buildPlans("fresh"),
+  fresh_v2_2026: buildPlans("fresh_v2_2026"),
   renewal_after: buildPlans("renewal_after"),
   renewal_before: buildPlans("renewal_before"),
   upgrade: buildPlans("upgrade"),
@@ -84,6 +104,7 @@ function buildMrpTable(userType: UserType): Record<PlanName, Record<Duration, nu
 
 export const MRP_TABLES: Record<UserType, Record<PlanName, Record<Duration, number>>> = {
   fresh: buildMrpTable("fresh"),
+  fresh_v2_2026: buildMrpTable("fresh_v2_2026"),
   renewal_after: buildMrpTable("renewal_after"),
   renewal_before: buildMrpTable("renewal_before"),
   upgrade: buildMrpTable("upgrade"),
@@ -95,6 +116,7 @@ export const MRP_TABLE_RENEWAL = MRP_TABLES.renewal_after;
 
 export const ANNUAL_DISCOUNTED: Record<UserType, Record<PlanName, number>> = {
   fresh: { silver: 399, diamond: 2599, platinum: 2999, enterprise: 4999 },
+  fresh_v2_2026: { silver: 1990, diamond: 3490, platinum: 3990, enterprise: 6840 },
   renewal_after: { silver: 399, diamond: 2599, platinum: 3999, enterprise: 5999 },
   renewal_before: { silver: 399, diamond: 2599, platinum: 5999, enterprise: 8999 },
   upgrade: { silver: 399, diamond: 2599, platinum: 3999, enterprise: 5999 },
@@ -468,8 +490,17 @@ export function calculateBreakdown(
 }
 
 export const USER_TYPE_LABELS: Record<UserType, string> = {
-  fresh: "Fresh Plan Purchase",
+  fresh: "Fresh — Before 22 Jun 2026 (legacy catalog)",
+  fresh_v2_2026: "Fresh — After 22 Jun 2026 (new catalog)",
   renewal_after: "Renewal (after 16 Feb 2024)",
   renewal_before: "Renewal (before 16 Feb 2024)",
   upgrade: "Upgrade (existing user)",
+};
+
+// Monthly prices for the new (post-22-Jun-2026) catalog. Advanced is sales-touch only.
+export const MONTHLY_PRICES_V2: Record<PlanName, number | null> = {
+  silver: 199,
+  diamond: 349,
+  platinum: 399,
+  enterprise: null,
 };

@@ -20,7 +20,7 @@ import {
 } from "@/lib/pricing-data";
 
 const PLAN_NAMES: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
-const USER_TYPES: UserType[] = ["fresh", "renewal_after", "renewal_before", "upgrade"];
+const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "renewal_after", "renewal_before", "upgrade"];
 
 const Section = ({ title, id, children }: { title: string; id: string; children: React.ReactNode }) => (
   <section id={id} className="space-y-3">
@@ -128,6 +128,9 @@ const CHECKOUT_SCENARIOS: CheckoutScenario[] = [
   { label: "Fresh + Diamond + 3yr (multi-year)", userType: "fresh", plan: "diamond", duration: "3yr", coupon: 0 },
   { label: "Renewal After + Platinum + 2yr", userType: "renewal_after", plan: "platinum", duration: "2yr", coupon: 0 },
   { label: "Renewal Before + Enterprise + 5yr", userType: "renewal_before", plan: "enterprise", duration: "5yr", coupon: 0 },
+  { label: "Fresh v2 (post-22-Jun-2026) + Starter + 1yr", userType: "fresh_v2_2026", plan: "silver", duration: "1yr", coupon: 0 },
+  { label: "Fresh v2 + Growth + 3yr (multi-year)", userType: "fresh_v2_2026", plan: "platinum", duration: "3yr", coupon: 0 },
+  { label: "Fresh v2 + Advanced + 1yr (base)", userType: "fresh_v2_2026", plan: "enterprise", duration: "1yr", coupon: 0 },
   {
     label: "Upgrade: Diamond → Platinum, 1yr",
     userType: "upgrade", plan: "platinum", duration: "1yr", coupon: 0,

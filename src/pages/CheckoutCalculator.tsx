@@ -23,7 +23,8 @@ import {
   calculateMonthlyUpgradeCredit,
 } from "@/lib/pricing-data";
 
-const USER_TYPES: UserType[] = ["fresh", "renewal_after", "renewal_before", "upgrade"];
+const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "renewal_after", "renewal_before", "upgrade"];
+const PURCHASE_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "renewal_after", "renewal_before"];
 const PLAN_ORDER: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
 
 const CheckoutCalculator = () => {
@@ -42,7 +43,7 @@ const CheckoutCalculator = () => {
   const [customCoupon, setCustomCoupon] = useState<string>("");
   const [useCustomCoupon, setUseCustomCoupon] = useState(false);
   const [userType, setUserType] = useState<UserType>(
-    (["fresh", "renewal_after", "renewal_before", "upgrade"].includes(searchParams.get("userType") || "")
+    (USER_TYPES.includes(searchParams.get("userType") as UserType)
       ? searchParams.get("userType") as UserType : "fresh")
   );
   const [discountOpen, setDiscountOpen] = useState(searchParams.get("custom") === "1");
@@ -87,7 +88,7 @@ const CheckoutCalculator = () => {
     (Number(searchParams.get("currentUsers")) || 3) as EnterpriseUserSlab
   );
   const [currentPlanPurchaseType, setCurrentPlanPurchaseType] = useState<UserType>(
-    (["fresh", "renewal_after", "renewal_before"].includes(searchParams.get("purchaseType") || "")
+    (PURCHASE_TYPES.includes(searchParams.get("purchaseType") as UserType)
       ? searchParams.get("purchaseType") as UserType : "fresh")
   );
   const [useOldMultiYearDiscount, setUseOldMultiYearDiscount] = useState(
@@ -473,7 +474,8 @@ const CheckoutCalculator = () => {
                       )}
                       <div className="flex flex-col gap-1.5">
                         {([
-                          { value: "fresh", label: "First-time purchase" },
+                          { value: "fresh", label: "First-time (legacy catalog)" },
+                          { value: "fresh_v2_2026", label: "First-time after 22 Jun 2026 (new catalog)" },
                           { value: "renewal_after", label: "Renewal (after 16 Feb 2024)" },
                           { value: "renewal_before", label: "Renewal (before 16 Feb 2024)" },
                         ] as { value: UserType; label: string }[]).map((opt) => (
