@@ -11,7 +11,25 @@ export const PLAN_PLATFORM: Record<PlanName, Platform[]> = {
   enterprise: ["android", "web"],
 };
 export type Duration = "1yr" | "2yr" | "3yr" | "4yr" | "5yr" | "6yr" | "7yr" | "8yr" | "9yr" | "10yr";
-export type UserType = "fresh" | "renewal_after" | "renewal_before" | "upgrade";
+export type UserType = "fresh" | "fresh_v2_2026" | "renewal_after" | "renewal_before" | "upgrade";
+
+// Cutoff: users whose first purchase is on/after this date see the new catalog
+// (Starter / Standard / Growth / Advanced).
+export const NEW_CATALOG_CUTOFF = "2026-06-22";
+
+// Renamed plan display names for the new (post-22-Jun-2026) catalog cohort
+export const PLAN_DISPLAY_NAMES_V2: Record<PlanName, string> = {
+  silver: "Starter",
+  diamond: "Standard",
+  platinum: "Growth",
+  enterprise: "Advanced",
+};
+
+export function getPlanDisplayName(plan: PlanName, cohort: UserType): string {
+  if (cohort === "fresh_v2_2026") return PLAN_DISPLAY_NAMES_V2[plan];
+  // Capitalised first letter of plan key
+  return plan.charAt(0).toUpperCase() + plan.slice(1);
+}
 
 export interface PlanInfo {
   name: string;
