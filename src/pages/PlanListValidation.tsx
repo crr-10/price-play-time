@@ -56,8 +56,9 @@ const PlanListValidation = () => {
   const [platform, setPlatform] = useState<Platform>(
     searchParams.get("platform") === "web" ? "web" : "android"
   );
-  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>(
-    searchParams.get("billing") === "yearly" ? "yearly" : "monthly"
+  const [billingPeriod, setBillingPeriod] = useState<ViewBilling>(
+    (["yearly", "quarterly", "monthly"].includes(searchParams.get("billing") || "")
+      ? (searchParams.get("billing") as ViewBilling) : "monthly")
   );
   const [monthlyVariant, setMonthlyVariant] = useState<MonthlyVariant>(
     searchParams.get("variant") === "B" ? "B" : "A"
