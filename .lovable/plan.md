@@ -1,52 +1,54 @@
-
-
-# Restrict Upgrade Duration Based on Remaining Days + Show Expiry on Plan List
+# Plan: Add "Fresh — After 22 Jun 2026" pricing cohort
 
 ## Overview
+Introduce the new catalog (Starter / Standard / Growth / Advanced) as a **4th cohort** alongside existing Fresh / Renewal-After / Renewal-Before. Old plan names (Silver/Diamond/Platinum/Enterprise) remain untouched for legacy cohorts. New cohort applies to users whose first purchase is on/after **22 Jun 2026**, and also to their future renewals.
 
-Two changes:
-1. On the **Plan List page** (upgrade mode), show a banner: "Your [plan] plan expires on [date]" (matching the screenshot)
-2. On the **Checkout page** (upgrade mode), filter the duration dropdown so users can only select durations >= their remaining time (rounded up to the next year ceiling)
+## Cohort mapping
+| New name | Maps to existing tier | Monthly | Yearly (ex-GST) |
+|---|---|---|---|
+| Starter  | Silver     | ₹199        | ₹1,990 |
+| Standard | Diamond    | ₹349        | ₹3,490 |
+| Growth   | Platinum   | ₹399        | ₹3,990 |
+| Advanced | Enterprise | Not self-serve | Starts at ₹6,840/yr |
 
-## Duration Restriction Logic
+Internally we keep the 4 tier keys (`silver/diamond/platinum/enterprise`) and only swap **display name + price** when the active cohort is `fresh_v2_2026`.
 
-```text
-remainingDays = planEndDate - today
-minYears = Math.ceil(remainingDays / 365)
-```
-
-- remaining <= 365 days (1yr) --> show 1yr and above
-- remaining <= 730 days (2yr) --> show 2yr and above
-- remaining <= 1095 days (3yr) --> show 3yr and above
-- etc.
-
-If the currently selected duration is below the minimum, auto-adjust it upward.
+## Rules
+- Multi-year slabs, plan-level discount %, coupons, GST 18% — **identical** to current Fresh logic.
+- Advanced reuses Enterprise customization (extra businesses, user slabs) on top of ₹6,840 base.
+- Renewal of a `fresh_v2_2026` user → stays on the new catalog (a new "Renewal — v2" sub-cohort that mirrors the new prices, no separate price table needed since prices = fresh_v2).
+- Upgrade credit calc unchanged; uses the cohort's own price table.
 
 ## Changes
 
-### 1. Plan List Page (`src/pages/PlanListValidation.tsx`)
+### 1. `src/lib/pricing-data.ts`
+- Add cohort key `fresh_v2_2026` to `ANNUAL_DISCOUNTED` and `PLANS_BY_TYPE` with new prices.
+- Add `MONTHLY_PRICES_V2 = { silver:199, diamond:349, growth:399, enterprise:0 }` (or extend `MONTHLY_PRICES` keyed by cohort).
+- Add `PLAN_DISPLAY_NAMES_V2 = { silver:"Starter", diamond:"Standard", platinum:"Growth", enterprise:"Advanced" }`.
+- Add `NEW_CATALOG_CUTOFF = "2026-06-22"`.
+- Update Enterprise base price for v2 cohort = ₹6,840 (keep customization add-ons same).
 
-- Change the existing "auto renew" text (line 271) to match the production wording: **"Your [plan] plan expires on [date]"**
-- Style it as a prominent banner above the plan cards (matching the screenshot -- centered, light background)
+### 2. Cohort selector UI (Plan List + Calculator + QA)
+- Extend the cohort dropdown / radio from 3 → 4 options: `Fresh`, `Fresh — After 22 Jun 2026 (new catalog)`, `Renewal After`, `Renewal Before`.
+- When the new cohort is active, swap displayed plan names via a helper `getPlanDisplayName(plan, cohort)`.
 
-### 2. Checkout Page (`src/pages/CheckoutCalculator.tsx`)
+### 3. `src/pages/PlanListValidation.tsx` & `src/pages/CheckoutCalculator.tsx`
+- Read prices via existing `getAnnualPrice(plan, cohort)` — it'll just look up `fresh_v2_2026`.
+- Use display-name helper in headings/cards.
+- Advanced/Enterprise: continue showing customization UI, base swapped to ₹6,840.
 
-- Calculate `minDuration` from remaining days of current plan:
-  ```typescript
-  const remainingDays = upgradeCreditResult?.remainingDays ?? 0;
-  const minUpgradeYears = Math.max(1, Math.ceil(remainingDays / 365));
-  ```
-- Filter `DURATIONS` in the dropdown to only show durations where `DURATION_YEARS[d.key] >= minUpgradeYears`
-- Add a `useEffect` to auto-adjust `duration` upward if the current selection falls below the minimum
-- This only applies when `userType === "upgrade"`
+### 4. `src/pages/PricingRules.tsx` (the summary page)
+- Add the new cohort to:
+  - Section 1 (User Cohorts) — add "Fresh — After 22 Jun 2026" row.
+  - Section 2 (Annual Base Prices) — new column, plus a small note explaining the renamed plans.
+  - Section 7 (Monthly Plans) — show new monthly prices alongside old.
+- Replace the amber callout to also note: "Now also tracking a new Fresh cohort from 22 Jun 2026 with a renamed catalog — this further fragments backend pricing tables. Worth weighing against the legacy renewal split."
 
-### 3. Pricing Data (`src/lib/pricing-data.ts`)
+### 5. QA scenarios (`src/pages/QAChecklist.tsx`)
+- Add a few pre-configured scenarios for the new cohort (Starter 1yr, Growth 3yr w/ multi-year, Advanced base + customization).
 
-No changes needed -- all required data (DURATION_YEARS, DURATIONS) already exists.
+## Out of scope
+- No changes to discount sequence, GST, coupon engine, or upgrade-credit formula.
+- No date-based auto-cohort detection from a user's signup date — cohort remains a manual selector in the QA prototype.
 
-## Files Changed
-
-| File | Change |
-|------|--------|
-| `src/pages/PlanListValidation.tsx` | Update expiry banner text to "Your [plan] plan expires on [date]" |
-| `src/pages/CheckoutCalculator.tsx` | Filter duration dropdown based on remaining days, auto-adjust selection |
+Ready for your go-ahead.
