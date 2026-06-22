@@ -43,7 +43,7 @@ const CheckoutCalculator = () => {
   const [customCoupon, setCustomCoupon] = useState<string>("");
   const [useCustomCoupon, setUseCustomCoupon] = useState(false);
   const [userType, setUserType] = useState<UserType>(
-    (["fresh", "renewal_after", "renewal_before", "upgrade"].includes(searchParams.get("userType") || "")
+    (USER_TYPES.includes(searchParams.get("userType") as UserType)
       ? searchParams.get("userType") as UserType : "fresh")
   );
   const [discountOpen, setDiscountOpen] = useState(searchParams.get("custom") === "1");
