@@ -189,17 +189,23 @@ const PricingRules = () => {
             <table className="w-full text-sm">
               <thead className="bg-slate-100">
                 <tr>
-                  <th className="text-left p-2">Plan</th>
-                  <th className="text-right p-2">Monthly price</th>
+                  <th className="text-left p-2">Plan (legacy → new)</th>
+                  <th className="text-right p-2">Legacy monthly</th>
                   <th className="text-right p-2">1st month (Exp A)</th>
+                  <th className="text-right p-2">New monthly (post 22 Jun 2026)</th>
                 </tr>
               </thead>
               <tbody>
                 {PLAN_ORDER.map((p) => (
                   <tr key={p} className="border-b">
-                    <td className="p-2 capitalize">{p}</td>
+                    <td className="p-2 capitalize">
+                      {p} <span className="text-muted-foreground">→ {PLAN_DISPLAY_NAMES_V2[p]}</span>
+                    </td>
                     <td className="p-2 text-right">{formatINR(MONTHLY_PRICES[p])}</td>
                     <td className="p-2 text-right">{formatINR(MONTHLY_DISCOUNTED_FIRST_MONTH[p])}</td>
+                    <td className="p-2 text-right text-emerald-700 font-medium">
+                      {MONTHLY_PRICES_V2[p] == null ? "Not self-serve" : formatINR(MONTHLY_PRICES_V2[p] as number)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
