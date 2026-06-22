@@ -107,6 +107,16 @@ const PlanListValidation = () => {
   }, [platform, billingPeriod, monthlyVariant, userType, currentPlan, currentDuration, currentBillingPeriod, startDate, currentBusinesses, currentUserSlab]);
 
   const isMonthly = billingPeriod === "monthly";
+  const isQuarterly = billingPeriod === "quarterly";
+  const isV2 = userType === "fresh_v2_2026";
+
+  // If quarterly selected but cohort is not v2, fall back to monthly
+  useEffect(() => {
+    if (isQuarterly && !isV2) setBillingPeriod("monthly");
+  }, [isQuarterly, isV2]);
+
+  const monthlyPriceFor = (plan: PlanName) => isV2 ? MONTHLY_PRICES_V2[plan] : MONTHLY_PRICES[plan];
+  const quarterlyPriceFor = (plan: PlanName) => QUARTERLY_PRICES_V2[plan];
 
   const isUpgrade = userType === "upgrade";
   const isCurrentEnterprise = currentPlan === "enterprise";
