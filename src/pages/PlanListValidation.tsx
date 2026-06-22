@@ -219,6 +219,7 @@ const PlanListValidation = () => {
 
         {/* Monthly / Yearly Tab */}
         {(
+        {(
           <div className="flex items-center justify-center gap-2 mb-6">
             <div className="inline-flex rounded-lg border bg-muted p-1">
               <button
@@ -229,9 +230,19 @@ const PlanListValidation = () => {
               >
                 Monthly
               </button>
+              {isV2 && (
+                <button
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isQuarterly ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  onClick={() => setBillingPeriod("quarterly")}
+                >
+                  Quarterly
+                </button>
+              )}
               <button
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors relative ${
-                  !isMonthly ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  billingPeriod === "yearly" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
                 onClick={() => setBillingPeriod("yearly")}
               >
@@ -242,7 +253,7 @@ const PlanListValidation = () => {
               </button>
             </div>
 
-{isMonthly && (
+{isMonthly && !isV2 && (
               <div className="flex items-center gap-2 ml-4">
                 <Label className="text-xs text-muted-foreground">Experiment:</Label>
                 <Select value={monthlyVariant} onValueChange={(v) => setMonthlyVariant(v as MonthlyVariant)}>
