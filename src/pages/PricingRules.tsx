@@ -62,6 +62,12 @@ const PricingRules = () => {
               backend complexity (cohort detection by first-purchase date, separate MRP tables, branching in
               upgrade-credit calc). Silver &amp; Diamond have the same price across all cohorts.
             </p>
+            <p>
+              <strong>New from {NEW_CATALOG_CUTOFF}:</strong> a 4th cohort — <em>Fresh — After 22 Jun 2026</em> —
+              with a renamed catalog (Starter / Standard / Growth / Advanced) and significantly higher
+              prices. This further fragments backend pricing tables, so the renewal-tier decision below
+              is now more pressing.
+            </p>
             <p className="font-medium">
               Decision needed: keep both renewal tiers, collapse into a single renewal price, or sunset
               "Renewal Before" entirely?
@@ -71,10 +77,47 @@ const PricingRules = () => {
 
         {/* 1. User Cohorts */}
         <SectionCard title="1. User Cohorts" badge="Who pays what">
-          <Row label="Fresh" value="First-ever plan purchase" />
+          <Row label="Fresh — Before 22 Jun 2026" value="First purchase before 22 Jun 2026 (legacy catalog)" />
+          <Row label="Fresh — After 22 Jun 2026" value="First purchase on/after 22 Jun 2026 (new catalog: Starter/Standard/Growth/Advanced)" />
           <Row label="Renewal — After 16 Feb 2024" value="First purchase on/after 16 Feb 2024, renewing" />
           <Row label="Renewal — Before 16 Feb 2024" value="First purchase before 16 Feb 2024, renewing" />
           <Row label="Upgrade" value="Existing active plan, upgrading tier/duration (uses Renewal-After prices)" />
+        </SectionCard>
+
+        {/* 2. Annual base prices */}
+        <SectionCard title="2. Annual Base Prices (Ex-GST, ₹)" badge="Per cohort">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-100">
+                <tr>
+                  <th className="text-left p-2">Plan (legacy → new name)</th>
+                  <th className="text-right p-2">Fresh (legacy)</th>
+                  <th className="text-right p-2">Fresh — After 22 Jun 2026</th>
+                  <th className="text-right p-2">Renewal After</th>
+                  <th className="text-right p-2">Renewal Before</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PLAN_ORDER.map((p) => (
+                  <tr key={p} className="border-b">
+                    <td className="p-2 capitalize font-medium">
+                      {p} <span className="text-muted-foreground">→ {PLAN_DISPLAY_NAMES_V2[p]}</span>
+                    </td>
+                    <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.fresh[p])}</td>
+                    <td className="p-2 text-right text-emerald-700 font-medium">
+                      {p === "enterprise" ? `${formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026[p])}+` : formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026[p])}
+                    </td>
+                    <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.renewal_after[p])}</td>
+                    <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.renewal_before[p])}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-muted-foreground pt-2">
+            From 22 Jun 2026 the catalog is renamed: Silver→Starter, Diamond→Standard, Platinum→Growth, Enterprise→Advanced.
+            Advanced is sales-touch only; ₹6,840 is the starting price before customization.
+          </p>
         </SectionCard>
 
         {/* 2. Annual base prices */}
