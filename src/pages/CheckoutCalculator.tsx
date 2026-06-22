@@ -474,7 +474,8 @@ const CheckoutCalculator = () => {
                       )}
                       <div className="flex flex-col gap-1.5">
                         {([
-                          { value: "fresh", label: "First-time purchase" },
+                          { value: "fresh", label: "First-time (legacy catalog)" },
+                          { value: "fresh_v2_2026", label: "First-time after 22 Jun 2026 (new catalog)" },
                           { value: "renewal_after", label: "Renewal (after 16 Feb 2024)" },
                           { value: "renewal_before", label: "Renewal (before 16 Feb 2024)" },
                         ] as { value: UserType; label: string }[]).map((opt) => (
