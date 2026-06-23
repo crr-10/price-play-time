@@ -741,6 +741,7 @@ const CheckoutCalculator = () => {
                   <div className="mt-2 grid grid-cols-1 gap-1.5 text-xs">
                     {([
                       { tier: "upgrade" as UserType, label: "First-time / Renewal (after Feb '24)", matches: ["fresh", "renewal_after"] },
+                      { tier: "fresh_v2_2026" as UserType, label: "First-time after 22 Jun 2026 (new catalog)", matches: ["fresh_v2_2026"] },
                       { tier: "renewal_before" as UserType, label: "Renewal (before Feb '24)", matches: ["renewal_before"] },
                     ]).map(({ tier, label, matches }) => {
                       const b = calculateBreakdown(plan, duration, 0, tier, 0, enterpriseAddon);
