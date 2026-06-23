@@ -262,10 +262,15 @@ const CheckoutCalculator = () => {
     : null;
 
   // Yearly purchase/upgrade (existing logic)
-  // In custom upgrade mode, let the current plan purchase type drive the new plan's pricing tier
-  // (renewal_before → renewal_before pricing; fresh/renewal_after → upgrade/renewal_after pricing)
-  const effectiveBreakdownUserType: UserType = isCustomUpgrade
-    ? (currentPlanPurchaseType === "renewal_before" ? "renewal_before" : "upgrade")
+  // For upgrades, the new plan's pricing tier is driven by the original purchase cohort:
+  // renewal_before → renewal_before, fresh_v2_2026 → fresh_v2_2026 (new catalog),
+  // fresh/renewal_after → upgrade (== renewal_after pricing).
+  const cohortToTier = (c: UserType): UserType =>
+    c === "renewal_before" ? "renewal_before"
+    : c === "fresh_v2_2026" ? "fresh_v2_2026"
+    : "upgrade";
+  const effectiveBreakdownUserType: UserType = isUpgrade
+    ? cohortToTier(currentPlanPurchaseType)
     : userType;
   const yearlyBreakdown = !isMonthly && !isCurrentMonthly
     ? (contactSales ? null : calculateBreakdown(plan, duration, isUpgrade ? 0 : effectiveCoupon, effectiveBreakdownUserType, isUpgrade ? yearlyUpgradeCredit : 0, enterpriseAddon))
@@ -736,6 +741,7 @@ const CheckoutCalculator = () => {
                   <div className="mt-2 grid grid-cols-1 gap-1.5 text-xs">
                     {([
                       { tier: "upgrade" as UserType, label: "First-time / Renewal (after Feb '24)", matches: ["fresh", "renewal_after"] },
+                      { tier: "fresh_v2_2026" as UserType, label: "First-time after 22 Jun 2026 (new catalog)", matches: ["fresh_v2_2026"] },
                       { tier: "renewal_before" as UserType, label: "Renewal (before Feb '24)", matches: ["renewal_before"] },
                     ]).map(({ tier, label, matches }) => {
                       const b = calculateBreakdown(plan, duration, 0, tier, 0, enterpriseAddon);
