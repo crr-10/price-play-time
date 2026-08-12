@@ -10,7 +10,7 @@ import {
   PLANS_BY_TYPE, USER_TYPE_LABELS, DURATIONS, DURATION_YEARS, calculateUpgradeCredit, formatINR,
   PLAN_PLATFORM, ENTERPRISE_BASE, ENTERPRISE_MAX_BUSINESSES, ENTERPRISE_USER_STEPS,
   getEnterpriseUserSlabLabel, MONTHLY_PRICES, MONTHLY_PRICES_V2, QUARTERLY_PRICES_V2,
-  MONTHLY_DISCOUNTED_FIRST_MONTH, GST_RATE, getPlanDisplayName, V2_SALES_TOUCH_PLANS,
+  MONTHLY_DISCOUNTED_FIRST_MONTH, GST_RATE, getPlanDisplayName, V2_SALES_TOUCH_PLANS, isNewCatalogCohort,
   type UserType, type PlanName, type Duration, type Platform, type EnterpriseUserSlab,
   type BillingPeriod, type MonthlyVariant,
 } from "@/lib/pricing-data";
@@ -42,7 +42,7 @@ const PLAN_DESCRIPTIONS: Record<PlanName, string> = {
 };
 
 const PLAN_ORDER: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
-const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "renewal_after", "renewal_before", "upgrade"];
+const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "renewal_after", "renewal_before", "upgrade"];
 
 
 const PlanListValidation = () => {
@@ -108,7 +108,7 @@ const PlanListValidation = () => {
 
   const isMonthly = billingPeriod === "monthly";
   const isQuarterly = billingPeriod === "quarterly";
-  const isV2 = userType === "fresh_v2_2026";
+  const isV2 = isNewCatalogCohort(userType);
 
   // If quarterly selected but cohort is not v2, fall back to monthly
   useEffect(() => {

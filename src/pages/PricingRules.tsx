@@ -7,7 +7,7 @@ import {
   MONTHLY_PRICES, MONTHLY_DISCOUNTED_FIRST_MONTH, MONTHLY_PRICES_V2, QUARTERLY_PRICES_V2, V2_SALES_TOUCH_PLANS, GST_RATE, COUPON_OPTIONS,
   ENTERPRISE_BASE, ENTERPRISE_EXTRA_BUSINESS_COST, ENTERPRISE_USER_SLAB_COSTS,
   ENTERPRISE_MAX_BUSINESSES, ENTERPRISE_MAX_USERS, PLAN_PLATFORM,
-  ACTUAL_PLAN_DISCOUNTS, PLAN_DISPLAY_NAMES_V2, NEW_CATALOG_CUTOFF, formatINR,
+  ACTUAL_PLAN_DISCOUNTS, PLAN_DISPLAY_NAMES_V2, NEW_CATALOG_CUTOFF, NEVER_PURCHASED_CUTOFF, formatINR,
 } from "@/lib/pricing-data";
 
 const SectionCard = ({ title, badge, children }: { title: string; badge?: string; children: React.ReactNode }) => (
@@ -68,6 +68,11 @@ const PricingRules = () => {
               prices. This further fragments backend pricing tables, so the renewal-tier decision below
               is now more pressing.
             </p>
+            <p>
+              <strong>Also from {NEVER_PURCHASED_CUTOFF}:</strong> any user with <em>zero purchase history</em>
+              (never bought a monthly or annual plan), regardless of signup date, also moves to the new
+              catalog at the same prices.
+            </p>
             <p className="font-medium">
               Decision needed: keep both renewal tiers, collapse into a single renewal price, or sunset
               "Renewal Before" entirely?
@@ -79,6 +84,7 @@ const PricingRules = () => {
         <SectionCard title="1. User Cohorts" badge="Who pays what">
           <Row label="Fresh — Before 22 Jun 2026" value="First purchase before 22 Jun 2026 (legacy catalog)" />
           <Row label="Fresh — After 22 Jun 2026" value="First purchase on/after 22 Jun 2026 (new catalog: Starter/Standard/Growth/Advanced)" />
+          <Row label="Never purchased (as of 4 Aug 2026)" value="No monthly or annual plan ever bought — new catalog prices, regardless of signup date" />
           <Row label="Renewal — After 16 Feb 2024" value="First purchase on/after 16 Feb 2024, renewing" />
           <Row label="Renewal — Before 16 Feb 2024" value="First purchase before 16 Feb 2024, renewing" />
           <Row label="Upgrade" value="Existing active plan, upgrading tier/duration (uses Renewal-After prices)" />
@@ -92,7 +98,7 @@ const PricingRules = () => {
                 <tr>
                   <th className="text-left p-2">Plan (legacy → new name)</th>
                   <th className="text-right p-2">Fresh (legacy)</th>
-                  <th className="text-right p-2">Fresh — After 22 Jun 2026</th>
+                  <th className="text-right p-2">New catalog<br /><span className="font-normal text-xs">(after 22 Jun 2026 / never purchased)</span></th>
                   <th className="text-right p-2">Renewal After</th>
                   <th className="text-right p-2">Renewal Before</th>
                 </tr>
@@ -117,6 +123,7 @@ const PricingRules = () => {
           <p className="text-xs text-muted-foreground pt-2">
             From 22 Jun 2026 the catalog is renamed: Silver→Starter, Diamond→Standard, Platinum→Growth, Enterprise→Advanced.
             Advanced is sales-touch only; ₹6,840 is the starting price before customization.
+            The new catalog applies to first purchases on/after 22 Jun 2026 and to any user with no prior purchase as of 4 Aug 2026.
           </p>
         </SectionCard>
 

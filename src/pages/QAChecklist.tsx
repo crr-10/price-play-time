@@ -20,7 +20,7 @@ import {
 } from "@/lib/pricing-data";
 
 const PLAN_NAMES: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
-const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "renewal_after", "renewal_before", "upgrade"];
+const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "renewal_after", "renewal_before", "upgrade"];
 
 const Section = ({ title, id, children }: { title: string; id: string; children: React.ReactNode }) => (
   <section id={id} className="space-y-3">
@@ -131,6 +131,7 @@ const CHECKOUT_SCENARIOS: CheckoutScenario[] = [
   { label: "Fresh v2 (post-22-Jun-2026) + Starter + 1yr", userType: "fresh_v2_2026", plan: "silver", duration: "1yr", coupon: 0 },
   { label: "Fresh v2 + Growth + 3yr (multi-year)", userType: "fresh_v2_2026", plan: "platinum", duration: "3yr", coupon: 0 },
   { label: "Fresh v2 + Advanced + 1yr (base)", userType: "fresh_v2_2026", plan: "enterprise", duration: "1yr", coupon: 0 },
+  { label: "Never purchased (4 Aug 2026) + Standard + 1yr", userType: "never_purchased", plan: "diamond", duration: "1yr", coupon: 0 },
   {
     label: "Upgrade: Diamond → Platinum, 1yr",
     userType: "upgrade", plan: "platinum", duration: "1yr", coupon: 0,
