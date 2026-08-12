@@ -23,8 +23,8 @@ import {
   calculateMonthlyUpgradeCredit,
 } from "@/lib/pricing-data";
 
-const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "renewal_after", "renewal_before", "upgrade"];
-const PURCHASE_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "renewal_after", "renewal_before"];
+const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "renewal_after", "renewal_before", "upgrade"];
+const PURCHASE_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "renewal_after", "renewal_before"];
 const PLAN_ORDER: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
 
 const CheckoutCalculator = () => {
@@ -268,6 +268,7 @@ const CheckoutCalculator = () => {
   const cohortToTier = (c: UserType): UserType =>
     c === "renewal_before" ? "renewal_before"
     : c === "fresh_v2_2026" ? "fresh_v2_2026"
+    : c === "never_purchased" ? "never_purchased"
     : "upgrade";
   const effectiveBreakdownUserType: UserType = isUpgrade
     ? cohortToTier(currentPlanPurchaseType)
@@ -481,6 +482,8 @@ const CheckoutCalculator = () => {
                         {([
                           { value: "fresh", label: "First-time (legacy catalog)" },
                           { value: "fresh_v2_2026", label: "First-time after 22 Jun 2026 (new catalog)" },
+                    { value: "never_purchased", label: "No prior purchase as of 4 Aug 2026 (new catalog)" },
+                          { value: "never_purchased", label: "No prior purchase as of 4 Aug 2026 (new catalog)" },
                           { value: "renewal_after", label: "Renewal (after 16 Feb 2024)" },
                           { value: "renewal_before", label: "Renewal (before 16 Feb 2024)" },
                         ] as { value: UserType; label: string }[]).map((opt) => (
@@ -741,7 +744,7 @@ const CheckoutCalculator = () => {
                   <div className="mt-2 grid grid-cols-1 gap-1.5 text-xs">
                     {([
                       { tier: "upgrade" as UserType, label: "First-time / Renewal (after Feb '24)", matches: ["fresh", "renewal_after"] },
-                      { tier: "fresh_v2_2026" as UserType, label: "First-time after 22 Jun 2026 (new catalog)", matches: ["fresh_v2_2026"] },
+                      { tier: "fresh_v2_2026" as UserType, label: "New catalog (after 22 Jun 2026 / no prior purchase)", matches: ["fresh_v2_2026", "never_purchased"] },
                       { tier: "renewal_before" as UserType, label: "Renewal (before Feb '24)", matches: ["renewal_before"] },
                     ]).map(({ tier, label, matches }) => {
                       const b = calculateBreakdown(plan, duration, 0, tier, 0, enterpriseAddon);

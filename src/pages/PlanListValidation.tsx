@@ -42,7 +42,7 @@ const PLAN_DESCRIPTIONS: Record<PlanName, string> = {
 };
 
 const PLAN_ORDER: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
-const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "renewal_after", "renewal_before", "upgrade"];
+const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "renewal_after", "renewal_before", "upgrade"];
 
 
 const PlanListValidation = () => {
@@ -108,7 +108,7 @@ const PlanListValidation = () => {
 
   const isMonthly = billingPeriod === "monthly";
   const isQuarterly = billingPeriod === "quarterly";
-  const isV2 = userType === "fresh_v2_2026";
+  const isV2 = isNewCatalogCohort(userType);
 
   // If quarterly selected but cohort is not v2, fall back to monthly
   useEffect(() => {
