@@ -10,7 +10,7 @@ import {
   PLANS_BY_TYPE, USER_TYPE_LABELS, DURATIONS, DURATION_YEARS, calculateUpgradeCredit, formatINR,
   PLAN_PLATFORM, ENTERPRISE_BASE, ENTERPRISE_MAX_BUSINESSES, ENTERPRISE_USER_STEPS,
   getEnterpriseUserSlabLabel, MONTHLY_PRICES, MONTHLY_PRICES_V2, QUARTERLY_PRICES_V2,
-  MONTHLY_DISCOUNTED_FIRST_MONTH, GST_RATE, getPlanDisplayName, V2_SALES_TOUCH_PLANS,
+  MONTHLY_DISCOUNTED_FIRST_MONTH, GST_RATE, getPlanDisplayName, V2_SALES_TOUCH_PLANS, isNewCatalogCohort,
   type UserType, type PlanName, type Duration, type Platform, type EnterpriseUserSlab,
   type BillingPeriod, type MonthlyVariant,
 } from "@/lib/pricing-data";
