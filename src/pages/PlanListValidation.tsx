@@ -252,7 +252,7 @@ const PlanListValidation = () => {
               </button>
             </div>
 
-{isMonthly && !isV2 && (
+{isMonthly && (
               <div className="flex items-center gap-2 ml-4">
                 <Label className="text-xs text-muted-foreground">Experiment:</Label>
                 <Select value={monthlyVariant} onValueChange={(v) => setMonthlyVariant(v as MonthlyVariant)}>
