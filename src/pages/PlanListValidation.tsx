@@ -451,7 +451,7 @@ const PlanListValidation = () => {
                 ) : isMonthly ? (
                   /* Monthly pricing */
                   <div className="pt-2">
-                    {!isV2 && monthlyVariant === "A" ? (
+                    {monthlyVariant === "A" ? (
                       <>
                         <div className="flex items-baseline gap-2">
                           <span className="text-muted-foreground line-through text-base">
