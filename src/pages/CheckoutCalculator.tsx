@@ -483,7 +483,6 @@ const CheckoutCalculator = () => {
                           { value: "fresh", label: "Active legacy plan (before 22 Jun 2026)" },
                           { value: "fresh_v2_2026", label: "Created on/after 22 Jun 2026 (updated catalog)" },
                           { value: "never_purchased", label: "No prior purchase as of 4 Aug 2026 (updated catalog)" },
-                          { value: "expired_historical", label: "Expired historical purchaser (updated catalog)" },
                           { value: "renewal_before", label: "Renewal eligible (before 16 Feb 2024)" },
                         ] as { value: UserType; label: string }[]).map((opt) => (
                           <label key={opt.value} className="flex items-center gap-2 text-xs cursor-pointer">
