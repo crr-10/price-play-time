@@ -44,7 +44,7 @@ const PPDCalculator = () => {
     (searchParams.get("duration") as Duration) || "1yr"
   );
   const [currentPlanPurchaseType, setCurrentPlanPurchaseType] = useState<UserType>(
-    (["fresh", "fresh_v2_2026", "never_purchased", "expired_historical", "renewal_before"].includes(searchParams.get("purchaseType") || "")
+    (["fresh", "fresh_v2_2026", "never_purchased", "renewal_before"].includes(searchParams.get("purchaseType") || "")
       ? searchParams.get("purchaseType") as UserType : "fresh")
   );
   const [useOldMultiYearDiscount, setUseOldMultiYearDiscount] = useState(
