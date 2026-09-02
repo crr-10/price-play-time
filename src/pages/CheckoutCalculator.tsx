@@ -256,23 +256,23 @@ const CheckoutCalculator = () => {
     ? calculateMonthlyToMonthlyUpgrade(currentPlan, plan, currentRemainingDays)
     : null;
 
-  // Monthly→Yearly upgrade
-  const monthlyToYearlyResult = isUpgrade && isCurrentMonthly && !isMonthly
-    ? calculateMonthlyToYearlyUpgrade(currentPlan, plan, duration, currentRemainingDays, "fresh", isEnterprise ? enterpriseAddon : 0)
-    : null;
-
-  // Yearly purchase/upgrade (existing logic)
-  // For upgrades, the new plan's pricing tier is driven by the original purchase cohort:
-  // renewal_before → renewal_before, fresh_v2_2026 → fresh_v2_2026 (new catalog),
-  // Legacy active plans upgrade onto the updated catalog; pre-Feb-2024 users keep their special Pro/Pro Max base prices.
+  // For upgrades the NEW plan is always sold from the updated catalog — legacy-active
+  // customers keep their legacy price only on the plan they already own (i.e. the credit),
+  // never on the plan they upgrade to. Pre-16-Feb-2024 renewal eligibility is the single
+  // exception: Pro / Pro Max keep their protected base price.
   const cohortToTier = (c: UserType): UserType =>
-    c === "renewal_before" ? "renewal_before"
-    : c === "fresh_v2_2026" ? "fresh_v2_2026"
-    : c === "never_purchased" ? "never_purchased"
-    : "upgrade";
+    c === "renewal_before" ? "renewal_before" : "upgrade";
   const effectiveBreakdownUserType: UserType = isUpgrade
     ? cohortToTier(currentPlanPurchaseType)
     : userType;
+
+  // Monthly→Yearly upgrade
+  const monthlyToYearlyResult = isUpgrade && isCurrentMonthly && !isMonthly
+    ? calculateMonthlyToYearlyUpgrade(currentPlan, plan, duration, currentRemainingDays, effectiveBreakdownUserType, isEnterprise ? enterpriseAddon : 0)
+    : null;
+
+  // Yearly purchase/upgrade (existing logic)
+
   const yearlyBreakdown = !isMonthly && !isCurrentMonthly
     ? (contactSales ? null : calculateBreakdown(plan, duration, isUpgrade ? 0 : effectiveCoupon, effectiveBreakdownUserType, isUpgrade ? yearlyUpgradeCredit : 0, enterpriseAddon))
     : !isMonthly && isCurrentMonthly
@@ -741,12 +741,12 @@ const CheckoutCalculator = () => {
                   </p>
                   <div className="mt-2 grid grid-cols-1 gap-1.5 text-xs">
                     {([
-                      { tier: "fresh" as UserType, label: "Active legacy plan (legacy catalog)", matches: ["fresh"] },
-                      { tier: "fresh_v2_2026" as UserType, label: "Updated catalog (post 22 Jun 2026 / no prior purchase / expired)", matches: ["fresh_v2_2026", "never_purchased"] },
-                      { tier: "renewal_before" as UserType, label: "Renewal eligible (before 16 Feb 2024)", matches: ["renewal_before"] },
-                    ]).map(({ tier, label, matches }) => {
+                      { tier: "upgrade" as UserType, label: "Updated catalog (all upgrades, incl. active legacy plans)" },
+                      { tier: "renewal_before" as UserType, label: "Renewal eligible (before 16 Feb 2024)" },
+                    ]).map(({ tier, label }) => {
                       const b = calculateBreakdown(plan, duration, 0, tier, 0, enterpriseAddon);
-                      const isSelected = matches.includes(currentPlanPurchaseType);
+                      const isSelected = effectiveBreakdownUserType === tier;
+
                       return (
                         <div
                           key={tier}
