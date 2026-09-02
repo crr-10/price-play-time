@@ -79,7 +79,6 @@ const PricingRules = () => {
           <Row label="Fresh — Before 22 Jun 2026" value="First purchase before 22 Jun 2026 (legacy catalog)" />
           <Row label="Fresh — After 22 Jun 2026" value="First purchase on/after 22 Jun 2026 (new catalog: Starter/Standard/Growth/Advanced)" />
           <Row label="Never purchased (as of 4 Aug 2026)" value="No monthly or annual plan ever bought — new catalog prices, regardless of signup date" />
-          <Row label="Expired historical purchaser" value="Purchased before, currently inactive — full updated catalog" />
           <Row label="Renewal — Before 16 Feb 2024" value="Eligible historical user — updated names, with Pro ₹5,999 and Pro Max ₹8,999 annual bases" />
           <Row label="Upgrade" value="Existing active plan — credit uses original purchase basis; new plan uses updated catalog or pre-Feb-2024 eligible base" />
         </SectionCard>
@@ -93,7 +92,6 @@ const PricingRules = () => {
                   <th className="text-left p-2">Plan (legacy → new name)</th>
                   <th className="text-right p-2">Fresh (legacy)</th>
                   <th className="text-right p-2">New catalog<br /><span className="font-normal text-xs">(after 22 Jun 2026 / never purchased)</span></th>
-                  <th className="text-right p-2">Expired / updated</th>
                   <th className="text-right p-2">Renewal Before</th>
                 </tr>
               </thead>
@@ -107,7 +105,6 @@ const PricingRules = () => {
                     <td className="p-2 text-right text-emerald-700 font-medium">
                       {p === "enterprise" ? `${formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026[p])}+` : formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026[p])}
                     </td>
-                    <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.expired_historical[p])}</td>
                     <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.renewal_before[p])}</td>
                   </tr>
                 ))}
@@ -116,7 +113,7 @@ const PricingRules = () => {
           </div>
           <p className="text-xs text-muted-foreground pt-2">
             Updated names in this release: Silver→Lite, Diamond→Plus, Platinum→Pro, Enterprise→Pro Max.
-            Pro Max starts at ₹6,840 before customization. Expired historical purchasers receive this full updated table.
+            Pro Max starts at ₹6,840 before customization.
             Pre-16-Feb-2024 eligible users use updated Lite/Plus prices and special Pro ₹5,999 / Pro Max ₹8,999 annual bases.
           </p>
         </SectionCard>

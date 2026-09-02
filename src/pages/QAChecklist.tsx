@@ -20,7 +20,7 @@ import {
 } from "@/lib/pricing-data";
 
 const PLAN_NAMES: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
-const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "expired_historical", "renewal_before", "upgrade"];
+const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "renewal_before", "upgrade"];
 
 const Section = ({ title, id, children }: { title: string; id: string; children: React.ReactNode }) => (
   <section id={id} className="space-y-3">
@@ -126,7 +126,6 @@ interface CheckoutScenario {
 const CHECKOUT_SCENARIOS: CheckoutScenario[] = [
   { label: "Fresh + Platinum + 1yr (baseline)", userType: "fresh", plan: "platinum", duration: "1yr", coupon: 0 },
   { label: "Fresh + Diamond + 3yr (multi-year)", userType: "fresh", plan: "diamond", duration: "3yr", coupon: 0 },
-  { label: "Expired historical + Pro + 2yr", userType: "expired_historical", plan: "platinum", duration: "2yr", coupon: 0 },
   { label: "Renewal eligible (pre-Feb-24) + Pro Max + 5yr", userType: "renewal_before", plan: "enterprise", duration: "5yr", coupon: 0 },
   { label: "Post-22-Jun-2026 + Lite + 1yr", userType: "fresh_v2_2026", plan: "silver", duration: "1yr", coupon: 0 },
   { label: "Post-22-Jun-2026 + Pro + 3yr (multi-year)", userType: "fresh_v2_2026", plan: "platinum", duration: "3yr", coupon: 0 },
@@ -228,7 +227,6 @@ const PPD_SCENARIOS: PPDScenario[] = [
   { label: "Diamond 2yr (5% multi-year), 200 days ago", plan: "diamond", duration: "2yr", daysAgo: 200 },
   { label: "Platinum 3yr (10% discount), 50 days ago", plan: "platinum", duration: "3yr", daysAgo: 50 },
   { label: "Diamond 3yr, OLD discount (20%), 100 days ago", plan: "diamond", duration: "3yr", daysAgo: 100, multiYearDiscountOverride: OLD_MULTI_YEAR_DISCOUNTS["3yr"] },
-  { label: "Platinum 2yr, expired historical, 150 days ago", plan: "platinum", duration: "2yr", daysAgo: 150, purchaseType: "expired_historical" },
   { label: "Enterprise 1yr + addon (₹2k biz + ₹2k users), 90 days ago", plan: "enterprise", duration: "1yr", daysAgo: 90, enterpriseAddon: 4000 },
 ];
 
@@ -534,8 +532,8 @@ const QAChecklist = () => {
                 </CheckItem>
                 <CheckItem>
                   <strong>PPD purchase type</strong>: For Platinum/Enterprise upgrades, the credit varies based on how the current plan was purchased.
-                  Platinum legacy = {formatINR(ANNUAL_DISCOUNTED.fresh.platinum)}/yr vs updated Pro = {formatINR(ANNUAL_DISCOUNTED.expired_historical.platinum)}/yr.
-                  Enterprise legacy = {formatINR(ANNUAL_DISCOUNTED.fresh.enterprise)}/yr vs updated Pro Max = {formatINR(ANNUAL_DISCOUNTED.expired_historical.enterprise)}/yr.
+                  Platinum legacy = {formatINR(ANNUAL_DISCOUNTED.fresh.platinum)}/yr vs updated Pro = {formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026.platinum)}/yr.
+                  Enterprise legacy = {formatINR(ANNUAL_DISCOUNTED.fresh.enterprise)}/yr vs updated Pro Max = {formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026.enterprise)}/yr.
                 </CheckItem>
               </ul>
             </CardContent>
@@ -677,7 +675,7 @@ const QAChecklist = () => {
                     Fresh Checkout <ExternalLink className="h-3 w-3" />
                   </Button>
                 </Link>
-                <Link to="/calculator?userType=expired_historical&plan=platinum">
+                <Link to="/calculator?userType=renewal_before&plan=platinum">
                   <Button variant="outline" size="sm" className="text-xs gap-1">
                     Renewal Checkout <ExternalLink className="h-3 w-3" />
                   </Button>

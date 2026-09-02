@@ -42,7 +42,7 @@ const PLAN_DESCRIPTIONS: Record<PlanName, string> = {
 };
 
 const PLAN_ORDER: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
-const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "expired_historical", "renewal_before", "upgrade"];
+const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "renewal_before", "upgrade"];
 
 
 const PlanListValidation = () => {
