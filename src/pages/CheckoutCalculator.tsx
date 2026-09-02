@@ -741,12 +741,12 @@ const CheckoutCalculator = () => {
                   </p>
                   <div className="mt-2 grid grid-cols-1 gap-1.5 text-xs">
                     {([
-                      { tier: "fresh" as UserType, label: "Active legacy plan (legacy catalog)", matches: ["fresh"] },
-                      { tier: "fresh_v2_2026" as UserType, label: "Updated catalog (post 22 Jun 2026 / no prior purchase / expired)", matches: ["fresh_v2_2026", "never_purchased"] },
-                      { tier: "renewal_before" as UserType, label: "Renewal eligible (before 16 Feb 2024)", matches: ["renewal_before"] },
-                    ]).map(({ tier, label, matches }) => {
+                      { tier: "upgrade" as UserType, label: "Updated catalog (all upgrades, incl. active legacy plans)" },
+                      { tier: "renewal_before" as UserType, label: "Renewal eligible (before 16 Feb 2024)" },
+                    ]).map(({ tier, label }) => {
                       const b = calculateBreakdown(plan, duration, 0, tier, 0, enterpriseAddon);
-                      const isSelected = matches.includes(currentPlanPurchaseType);
+                      const isSelected = effectiveBreakdownUserType === tier;
+
                       return (
                         <div
                           key={tier}
