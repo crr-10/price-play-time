@@ -93,7 +93,6 @@ const PricingRules = () => {
                   <th className="text-left p-2">Plan (legacy → new name)</th>
                   <th className="text-right p-2">Fresh (legacy)</th>
                   <th className="text-right p-2">New catalog<br /><span className="font-normal text-xs">(after 22 Jun 2026 / never purchased)</span></th>
-                  <th className="text-right p-2">Expired / updated</th>
                   <th className="text-right p-2">Renewal Before</th>
                 </tr>
               </thead>
@@ -107,7 +106,6 @@ const PricingRules = () => {
                     <td className="p-2 text-right text-emerald-700 font-medium">
                       {p === "enterprise" ? `${formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026[p])}+` : formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026[p])}
                     </td>
-                    <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026[p])}</td>
                     <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.renewal_before[p])}</td>
                   </tr>
                 ))}
