@@ -107,7 +107,7 @@ const PricingRules = () => {
                     <td className="p-2 text-right text-emerald-700 font-medium">
                       {p === "enterprise" ? `${formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026[p])}+` : formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026[p])}
                     </td>
-                    <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.expired_historical[p])}</td>
+                    <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026[p])}</td>
                     <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.renewal_before[p])}</td>
                   </tr>
                 ))}

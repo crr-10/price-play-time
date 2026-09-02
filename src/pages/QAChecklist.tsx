@@ -532,8 +532,8 @@ const QAChecklist = () => {
                 </CheckItem>
                 <CheckItem>
                   <strong>PPD purchase type</strong>: For Platinum/Enterprise upgrades, the credit varies based on how the current plan was purchased.
-                  Platinum legacy = {formatINR(ANNUAL_DISCOUNTED.fresh.platinum)}/yr vs updated Pro = {formatINR(ANNUAL_DISCOUNTED.expired_historical.platinum)}/yr.
-                  Enterprise legacy = {formatINR(ANNUAL_DISCOUNTED.fresh.enterprise)}/yr vs updated Pro Max = {formatINR(ANNUAL_DISCOUNTED.expired_historical.enterprise)}/yr.
+                  Platinum legacy = {formatINR(ANNUAL_DISCOUNTED.fresh.platinum)}/yr vs updated Pro = {formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026.platinum)}/yr.
+                  Enterprise legacy = {formatINR(ANNUAL_DISCOUNTED.fresh.enterprise)}/yr vs updated Pro Max = {formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026.enterprise)}/yr.
                 </CheckItem>
               </ul>
             </CardContent>
