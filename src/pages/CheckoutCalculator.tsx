@@ -13,7 +13,7 @@ import {
   type PlanName, type Duration, type UserType, type Platform, type EnterpriseUserSlab,
   type BillingPeriod, type MonthlyVariant,
   PLANS_BY_TYPE, DURATIONS, DURATION_YEARS, MULTI_YEAR_DISCOUNTS, OLD_MULTI_YEAR_DISCOUNTS,
-  COUPON_OPTIONS, USER_TYPE_LABELS, PLAN_PLATFORM,
+  COUPON_OPTIONS, USER_TYPE_LABELS, PLAN_PLATFORM, getPlanDisplayName,
   ENTERPRISE_BASE, ENTERPRISE_MAX_BUSINESSES, ENTERPRISE_USER_STEPS,
   getEnterpriseAddon, getEnterpriseUserSlabLabel,
   calculateBreakdown, calculateUpgradeCredit, calculateCustomUpgradeCredit, formatINR, formatINR2,
@@ -23,8 +23,8 @@ import {
   calculateMonthlyUpgradeCredit,
 } from "@/lib/pricing-data";
 
-const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "renewal_after", "renewal_before", "upgrade"];
-const PURCHASE_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "renewal_after", "renewal_before"];
+const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "expired_historical", "renewal_before", "upgrade"];
+const PURCHASE_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "expired_historical", "renewal_before"];
 const PLAN_ORDER: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
 
 const CheckoutCalculator = () => {
@@ -264,7 +264,7 @@ const CheckoutCalculator = () => {
   // Yearly purchase/upgrade (existing logic)
   // For upgrades, the new plan's pricing tier is driven by the original purchase cohort:
   // renewal_before → renewal_before, fresh_v2_2026 → fresh_v2_2026 (new catalog),
-  // fresh/renewal_after → upgrade (== renewal_after pricing).
+  // Legacy active plans upgrade onto the updated catalog; pre-Feb-2024 users keep their special Pro/Pro Max base prices.
   const cohortToTier = (c: UserType): UserType =>
     c === "renewal_before" ? "renewal_before"
     : c === "fresh_v2_2026" ? "fresh_v2_2026"
@@ -285,7 +285,7 @@ const CheckoutCalculator = () => {
     ? currentPlanEndDate
     : null;
 
-  const currentPlanName = currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
+  const currentPlanName = getPlanDisplayName(currentPlan, currentPlanPurchaseType);
 
   // User slab stepper
   const userSlabIdx = ENTERPRISE_USER_STEPS.indexOf(userSlab);
@@ -362,7 +362,7 @@ const CheckoutCalculator = () => {
           </div>
           {userType !== "fresh" && userType !== "upgrade" && (
             <p className="text-xs text-muted-foreground">
-              {userType === "renewal_after" ? "First plan purchased after 16 Feb 2024" : "First plan purchased before 16 Feb 2024"}
+              {USER_TYPE_LABELS[userType]}
             </p>
           )}
         </div>
@@ -480,12 +480,11 @@ const CheckoutCalculator = () => {
                       )}
                       <div className="flex flex-col gap-1.5">
                         {([
-                          { value: "fresh", label: "First-time (legacy catalog)" },
-                          { value: "fresh_v2_2026", label: "First-time after 22 Jun 2026 (new catalog)" },
-                    { value: "never_purchased", label: "No prior purchase as of 4 Aug 2026 (new catalog)" },
-                          { value: "never_purchased", label: "No prior purchase as of 4 Aug 2026 (new catalog)" },
-                          { value: "renewal_after", label: "Renewal (after 16 Feb 2024)" },
-                          { value: "renewal_before", label: "Renewal (before 16 Feb 2024)" },
+                          { value: "fresh", label: "Active legacy plan (before 22 Jun 2026)" },
+                          { value: "fresh_v2_2026", label: "Created on/after 22 Jun 2026 (updated catalog)" },
+                          { value: "never_purchased", label: "No prior purchase as of 4 Aug 2026 (updated catalog)" },
+                          { value: "expired_historical", label: "Expired historical purchaser (updated catalog)" },
+                          { value: "renewal_before", label: "Renewal eligible (before 16 Feb 2024)" },
                         ] as { value: UserType; label: string }[]).map((opt) => (
                           <label key={opt.value} className="flex items-center gap-2 text-xs cursor-pointer">
                             <input
@@ -635,7 +634,7 @@ const CheckoutCalculator = () => {
                               <div className="flex justify-between text-amber-700">
                                 <span>Purchase Type</span>
                                 <span className="font-medium">
-                                  {currentPlanPurchaseType === "fresh" ? "First-time" : currentPlanPurchaseType === "renewal_after" ? "Renewal (after Feb '24)" : "Renewal (before Feb '24)"}
+                                  {USER_TYPE_LABELS[currentPlanPurchaseType]}
                                 </span>
                               </div>
                             )}
@@ -724,7 +723,7 @@ const CheckoutCalculator = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {(isUpgrade ? availableNewPlans : platformPlans).map((p) => (
-                      <SelectItem key={p.key} value={p.key}>{p.name} Plan</SelectItem>
+                      <SelectItem key={p.key} value={p.key}>{getPlanDisplayName(p.key, isUpgrade ? effectiveBreakdownUserType : userType)} Plan</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -743,9 +742,9 @@ const CheckoutCalculator = () => {
                   </p>
                   <div className="mt-2 grid grid-cols-1 gap-1.5 text-xs">
                     {([
-                      { tier: "upgrade" as UserType, label: "First-time / Renewal (after Feb '24)", matches: ["fresh", "renewal_after"] },
-                      { tier: "fresh_v2_2026" as UserType, label: "New catalog (after 22 Jun 2026 / no prior purchase)", matches: ["fresh_v2_2026", "never_purchased"] },
-                      { tier: "renewal_before" as UserType, label: "Renewal (before Feb '24)", matches: ["renewal_before"] },
+                      { tier: "fresh" as UserType, label: "Active legacy plan (legacy catalog)", matches: ["fresh"] },
+                      { tier: "fresh_v2_2026" as UserType, label: "Updated catalog (post 22 Jun 2026 / no prior purchase / expired)", matches: ["fresh_v2_2026", "never_purchased", "expired_historical"] },
+                      { tier: "renewal_before" as UserType, label: "Renewal eligible (before 16 Feb 2024)", matches: ["renewal_before"] },
                     ]).map(({ tier, label, matches }) => {
                       const b = calculateBreakdown(plan, duration, 0, tier, 0, enterpriseAddon);
                       const isSelected = matches.includes(currentPlanPurchaseType);
@@ -951,9 +950,9 @@ const CheckoutCalculator = () => {
 
                 {/* Coupon (yearly, non-upgrade, non-renewal only) */}
                 {!isMonthly && (
-                  <div className={`border-t border-dashed pt-4 space-y-2 ${isUpgrade || userType === "renewal_after" || userType === "renewal_before" ? "opacity-50 pointer-events-none" : ""}`}>
+                  <div className={`border-t border-dashed pt-4 space-y-2 ${isUpgrade || userType === "renewal_before" ? "opacity-50 pointer-events-none" : ""}`}>
                     <span className="text-sm font-medium">Coupon / Discount %</span>
-                    {(isUpgrade || userType === "renewal_after" || userType === "renewal_before") && (
+                    {(isUpgrade || userType === "renewal_before") && (
                       <p className="text-xs text-muted-foreground">Not applicable for {isUpgrade ? "upgrade" : "renewal"} users</p>
                     )}
                     {isMonthly && (
@@ -1018,7 +1017,7 @@ const CheckoutCalculator = () => {
                     <h3 className="font-bold text-lg mb-5">Price Details — Monthly</h3>
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">{selectedPlan?.name} Monthly Plan</span>
+                        <span className="text-muted-foreground">{selectedPlan ? getPlanDisplayName(selectedPlan.key, userType) : "Selected"} Monthly Plan</span>
                         <span className="font-medium">{formatINR(monthlyBreakdown.baseAmount)}</span>
                       </div>
                       {monthlyBreakdown.isFirstMonth && (
@@ -1052,7 +1051,7 @@ const CheckoutCalculator = () => {
                     <h3 className="font-bold text-lg mb-5">Upgrade — Monthly → Monthly</h3>
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">New Plan ({selectedPlan?.name} Monthly)</span>
+                        <span className="text-muted-foreground">New Plan ({selectedPlan ? getPlanDisplayName(selectedPlan.key, effectiveBreakdownUserType) : "Selected"} Monthly)</span>
                         <span className="font-medium">{formatINR(monthlyToMonthlyResult.newPlanPrice)}</span>
                       </div>
                       <div className="flex justify-between text-amber-700">
@@ -1083,7 +1082,7 @@ const CheckoutCalculator = () => {
                     <h3 className="font-bold text-lg mb-5">Upgrade — Monthly → Yearly</h3>
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">{selectedPlan?.name} ({duration.replace("yr", " Year")})</span>
+                        <span className="text-muted-foreground">{selectedPlan ? getPlanDisplayName(selectedPlan.key, effectiveBreakdownUserType) : "Selected"} ({duration.replace("yr", " Year")})</span>
                         <span className="font-medium">{formatINR(monthlyToYearlyResult.annualPrice)}</span>
                       </div>
                       {monthlyToYearlyResult.credit > 0 && (

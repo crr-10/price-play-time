@@ -35,14 +35,14 @@ const PLAN_BUTTON_STYLES: Record<PlanName, string> = {
 };
 
 const PLAN_DESCRIPTIONS: Record<PlanName, string> = {
-  silver: "Starter plan for individuals (Android only)",
+  silver: "Entry plan for individuals (Android only)",
   diamond: "Essential plan for small business owners",
   platinum: "More users, more flexibility, and a Desktop app",
   enterprise: "Fully customizable for bigger businesses",
 };
 
 const PLAN_ORDER: PlanName[] = ["silver", "diamond", "platinum", "enterprise"];
-const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "renewal_after", "renewal_before", "upgrade"];
+const USER_TYPES: UserType[] = ["fresh", "fresh_v2_2026", "never_purchased", "expired_historical", "renewal_before", "upgrade"];
 
 
 const PlanListValidation = () => {
@@ -211,9 +211,7 @@ const PlanListValidation = () => {
 
         {userType !== "fresh" && userType !== "upgrade" && (
           <p className="text-xs text-muted-foreground text-center -mt-4 mb-2">
-            {userType === "renewal_after"
-              ? "First plan was purchased after 16 Feb 2024"
-              : "First plan was purchased before 16 Feb 2024"}
+            {USER_TYPE_LABELS[userType]}
           </p>
         )}
 

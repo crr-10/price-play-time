@@ -11,36 +11,78 @@ export const PLAN_PLATFORM: Record<PlanName, Platform[]> = {
   enterprise: ["android", "web"],
 };
 export type Duration = "1yr" | "2yr" | "3yr" | "4yr" | "5yr" | "6yr" | "7yr" | "8yr" | "9yr" | "10yr";
-export type UserType = "fresh" | "fresh_v2_2026" | "never_purchased" | "renewal_after" | "renewal_before" | "upgrade";
+export type UserType =
+  | "fresh"                // active legacy plan (purchased before 22 Jun 2026) — protected legacy price + legacy name
+  | "fresh_v2_2026"        // created on/after 22 Jun 2026 — updated catalog
+  | "never_purchased"      // free users in the 4 Aug 2026 rollout — updated catalog
+  | "expired_historical"   // purchased in the past, nothing active now — full updated catalog
+  | "renewal_before"       // pre-16-Feb-2024 renewal eligibility — updated catalog, legacy Pro/Pro Max base
+  | "upgrade";             // upgrading from an existing plan — updated catalog
 
-// Cutoff: users whose first purchase is on/after this date see the new catalog
-// (Starter / Standard / Growth / Advanced).
+// Cutoff: users created on/after this date see the updated catalog.
 export const NEW_CATALOG_CUTOFF = "2026-06-22";
 
-// Users with zero purchase history (no monthly or annual plan ever) as of this
-// date also move to the new catalog, regardless of signup date.
+// Free users with zero purchase history as of this date also moved to the updated catalog.
 export const NEVER_PURCHASED_CUTOFF = "2026-08-04";
 
-// Cohorts that use the new (Starter / Standard / Growth / Advanced) catalog
-export const NEW_CATALOG_COHORTS: UserType[] = ["fresh_v2_2026", "never_purchased"];
+// Every cohort except an *active* legacy plan now uses the updated catalog.
+export const NEW_CATALOG_COHORTS: UserType[] = [
+  "fresh_v2_2026",
+  "never_purchased",
+  "expired_historical",
+  "renewal_before",
+  "upgrade",
+];
 
 export function isNewCatalogCohort(cohort: UserType): boolean {
   return NEW_CATALOG_COHORTS.includes(cohort);
 }
 
-// Renamed plan display names for the new (post-22-Jun-2026) catalog cohort
+// Updated plan names (PRD: Renewal user pricing change)
 export const PLAN_DISPLAY_NAMES_V2: Record<PlanName, string> = {
-  silver: "Starter",
-  diamond: "Standard",
-  platinum: "Growth",
-  enterprise: "Advanced",
+  silver: "Lite",
+  diamond: "Plus",
+  platinum: "Pro",
+  enterprise: "Pro Max",
 };
 
+export const PLAN_LEGACY_NAMES: Record<PlanName, string> = {
+  silver: "Silver",
+  diamond: "Diamond",
+  platinum: "Platinum",
+  enterprise: "Enterprise",
+};
+
+/** Updated cohorts show "Lite (Silver)"; active legacy plans keep the historical name. */
 export function getPlanDisplayName(plan: PlanName, cohort: UserType): string {
-  if (isNewCatalogCohort(cohort)) return PLAN_DISPLAY_NAMES_V2[plan];
-  // Capitalised first letter of plan key
-  return plan.charAt(0).toUpperCase() + plan.slice(1);
+  if (isNewCatalogCohort(cohort)) return `${PLAN_DISPLAY_NAMES_V2[plan]} (${PLAN_LEGACY_NAMES[plan]})`;
+  return PLAN_LEGACY_NAMES[plan];
 }
+
+/** Short form without the legacy name in brackets. */
+export function getPlanShortName(plan: PlanName, cohort: UserType): string {
+  return isNewCatalogCohort(cohort) ? PLAN_DISPLAY_NAMES_V2[plan] : PLAN_LEGACY_NAMES[plan];
+}
+
+// --- Upgrade visibility for an ACTIVE legacy plan (PRD 6.3) ---
+// Lower tiers hidden; same-tier updated equivalent hidden except legacy Enterprise → Pro Max.
+export const LEGACY_ACTIVE_UPGRADE_OPTIONS: Record<PlanName, PlanName[]> = {
+  silver: ["diamond", "platinum", "enterprise"],
+  diamond: ["platinum", "enterprise"],
+  platinum: ["enterprise"],
+  enterprise: ["enterprise"],
+};
+
+// --- Updated Pro (ex-Platinum) packaging changes (PRD 7) ---
+export const PRO_PLAN_MIX_CHANGES = [
+  { capability: "Businesses", legacy: "2", updated: "1" },
+  { capability: "End-users", legacy: "3", updated: "1" },
+  { capability: "E-way Bills", legacy: "50/year", updated: "Not included" },
+];
+
+// Admin panel can still activate the legacy Platinum equivalent with edit limits (PRD 11)
+export const PLATINUM_ADMIN_EDIT_LIMITS = { maxBusinesses: 2, maxUsers: 3 };
+
 
 export interface PlanInfo {
   name: string;
@@ -64,11 +106,12 @@ const ANNUAL_PRICES: Record<string, Record<PlanName, number>> = {
   fresh: { silver: 399, diamond: 2599, platinum: 2999, enterprise: 4999 },
   fresh_v2_2026: { silver: 1990, diamond: 3490, platinum: 3990, enterprise: 6840 },
   never_purchased: { silver: 1990, diamond: 3490, platinum: 3990, enterprise: 6840 },
-  renewal_after: { silver: 399, diamond: 2599, platinum: 3999, enterprise: 5999 },
-  renewal_before: { silver: 399, diamond: 2599, platinum: 5999, enterprise: 8999 },
+  expired_historical: { silver: 1990, diamond: 3490, platinum: 3990, enterprise: 6840 },
+  // Pre-16-Feb-2024 eligibility: updated catalog, but Pro/Pro Max keep their legacy base price
+  renewal_before: { silver: 1990, diamond: 3490, platinum: 5999, enterprise: 8999 },
 };
-// Upgrade uses same pricing as renewal_after
-ANNUAL_PRICES.upgrade = ANNUAL_PRICES.renewal_after;
+// Upgrades are always onto the updated catalog
+ANNUAL_PRICES.upgrade = ANNUAL_PRICES.expired_historical;
 
 function backCalculateMRP(discounted: number, actualDiscountPercent: number): number {
   return Math.round(discounted / (1 - actualDiscountPercent / 100));
@@ -92,7 +135,7 @@ export const PLANS_BY_TYPE: Record<UserType, PlanInfo[]> = {
   fresh: buildPlans("fresh"),
   fresh_v2_2026: buildPlans("fresh_v2_2026"),
   never_purchased: buildPlans("never_purchased"),
-  renewal_after: buildPlans("renewal_after"),
+  expired_historical: buildPlans("expired_historical"),
   renewal_before: buildPlans("renewal_before"),
   upgrade: buildPlans("upgrade"),
 };
@@ -119,22 +162,22 @@ export const MRP_TABLES: Record<UserType, Record<PlanName, Record<Duration, numb
   fresh: buildMrpTable("fresh"),
   fresh_v2_2026: buildMrpTable("fresh_v2_2026"),
   never_purchased: buildMrpTable("never_purchased"),
-  renewal_after: buildMrpTable("renewal_after"),
+  expired_historical: buildMrpTable("expired_historical"),
   renewal_before: buildMrpTable("renewal_before"),
   upgrade: buildMrpTable("upgrade"),
 };
 
 // Keep old exports for compat
 export const MRP_TABLE = MRP_TABLES.fresh;
-export const MRP_TABLE_RENEWAL = MRP_TABLES.renewal_after;
+export const MRP_TABLE_RENEWAL = MRP_TABLES.renewal_before;
 
 export const ANNUAL_DISCOUNTED: Record<UserType, Record<PlanName, number>> = {
   fresh: { silver: 399, diamond: 2599, platinum: 2999, enterprise: 4999 },
   fresh_v2_2026: { silver: 1990, diamond: 3490, platinum: 3990, enterprise: 6840 },
   never_purchased: { silver: 1990, diamond: 3490, platinum: 3990, enterprise: 6840 },
-  renewal_after: { silver: 399, diamond: 2599, platinum: 3999, enterprise: 5999 },
-  renewal_before: { silver: 399, diamond: 2599, platinum: 5999, enterprise: 8999 },
-  upgrade: { silver: 399, diamond: 2599, platinum: 3999, enterprise: 5999 },
+  expired_historical: { silver: 1990, diamond: 3490, platinum: 3990, enterprise: 6840 },
+  renewal_before: { silver: 1990, diamond: 3490, platinum: 5999, enterprise: 8999 },
+  upgrade: { silver: 1990, diamond: 3490, platinum: 3990, enterprise: 6840 },
 };
 
 export const DURATION_YEARS: Record<Duration, number> = {
@@ -505,11 +548,11 @@ export function calculateBreakdown(
 }
 
 export const USER_TYPE_LABELS: Record<UserType, string> = {
-  fresh: "Fresh — Before 22 Jun 2026 (legacy catalog)",
-  fresh_v2_2026: "Fresh — After 22 Jun 2026 (new catalog)",
-  never_purchased: "Never purchased any plan (as of 4 Aug 2026) — new catalog",
-  renewal_after: "Renewal (after 16 Feb 2024)",
-  renewal_before: "Renewal (before 16 Feb 2024)",
+  fresh: "Active legacy plan (purchased before 22 Jun 2026)",
+  fresh_v2_2026: "Created on/after 22 Jun 2026 — updated catalog",
+  never_purchased: "Never purchased (4 Aug 2026 rollout) — updated catalog",
+  expired_historical: "Expired historical purchaser — updated catalog",
+  renewal_before: "Renewal eligible (first purchase before 16 Feb 2024)",
   upgrade: "Upgrade (existing user)",
 };
 

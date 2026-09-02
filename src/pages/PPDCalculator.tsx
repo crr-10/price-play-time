@@ -27,6 +27,7 @@ import {
   calculateCustomUpgradeCredit,
   formatINR,
   formatINR2,
+  USER_TYPE_LABELS,
 } from "@/lib/pricing-data";
 
 const PPDCalculator = () => {
@@ -43,7 +44,7 @@ const PPDCalculator = () => {
     (searchParams.get("duration") as Duration) || "1yr"
   );
   const [currentPlanPurchaseType, setCurrentPlanPurchaseType] = useState<UserType>(
-    (["fresh", "fresh_v2_2026", "never_purchased", "renewal_after", "renewal_before"].includes(searchParams.get("purchaseType") || "")
+    (["fresh", "fresh_v2_2026", "never_purchased", "expired_historical", "renewal_before"].includes(searchParams.get("purchaseType") || "")
       ? searchParams.get("purchaseType") as UserType : "fresh")
   );
   const [useOldMultiYearDiscount, setUseOldMultiYearDiscount] = useState(
@@ -235,8 +236,8 @@ const PPDCalculator = () => {
                     { value: "fresh", label: "First-time (legacy catalog)" },
                     { value: "fresh_v2_2026", label: "First-time after 22 Jun 2026 (new catalog)" },
                     { value: "never_purchased", label: "No prior purchase as of 4 Aug 2026 (new catalog)" },
-                    { value: "renewal_after", label: "Renewal (after 16 Feb 2024)" },
-                    { value: "renewal_before", label: "Renewal (before 16 Feb 2024)" },
+                    { value: "expired_historical", label: "Expired historical purchaser (new catalog)" },
+                    { value: "renewal_before", label: "Renewal eligible (before 16 Feb 2024)" },
                   ] as { value: UserType; label: string }[]).map((opt) => (
                     <label key={opt.value} className="flex items-center gap-2 text-xs cursor-pointer">
                       <input
@@ -386,7 +387,7 @@ const PPDCalculator = () => {
                       <div className="flex justify-between text-amber-700">
                         <span>Purchase Type</span>
                         <span className="font-medium">
-                          {currentPlanPurchaseType === "fresh" ? "First-time" : currentPlanPurchaseType === "renewal_after" ? "Renewal (after Feb '24)" : "Renewal (before Feb '24)"}
+                          {USER_TYPE_LABELS[currentPlanPurchaseType]}
                         </span>
                       </div>
                     )}
