@@ -47,35 +47,29 @@ const PricingRules = () => {
       </div>
 
       <div className="container mx-auto px-4 py-6 max-w-5xl">
-        {/* Decision callout */}
+        {/* Release summary */}
         <Card className="mb-6 border-amber-300 bg-amber-50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base text-amber-900">Open question for discussion</CardTitle>
+            <CardTitle className="text-base text-amber-900">Release summary</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-amber-900 space-y-2">
             <p>
-              Today we maintain <strong>three pricing cohorts</strong> for Platinum &amp; Enterprise:
-              <em> Fresh</em>, <em>Renewal After 16 Feb 2024</em>, and <em>Renewal Before 16 Feb 2024</em>.
+              This release keeps <strong>active legacy subscribers protected</strong> until expiry, while moving
+              expired historical purchasers and updated-catalog users to the renamed catalog.
             </p>
             <p>
-              The <strong>Renewal Before / After</strong> split exists only for legacy users and adds significant
-              backend complexity (cohort detection by first-purchase date, separate MRP tables, branching in
-              upgrade-credit calc). Silver &amp; Diamond have the same price across all cohorts.
+              <strong>From {NEW_CATALOG_CUTOFF}:</strong> users created on/after 22 Jun 2026 receive the updated
+              catalog. <strong>From {NEVER_PURCHASED_CUTOFF}:</strong> users with no monthly or annual purchase
+              history also receive it, regardless of signup date.
             </p>
             <p>
-              <strong>New from {NEW_CATALOG_CUTOFF}:</strong> a 4th cohort — <em>Fresh — After 22 Jun 2026</em> —
-              with a renamed catalog (Starter / Standard / Growth / Advanced) and significantly higher
-              prices. This further fragments backend pricing tables, so the renewal-tier decision below
-              is now more pressing.
-            </p>
-            <p>
-              <strong>Also from {NEVER_PURCHASED_CUTOFF}:</strong> any user with <em>zero purchase history</em>
-              (never bought a monthly or annual plan), regardless of signup date, also moves to the new
-              catalog at the same prices.
+              The old Renewal After cohort is removed. Users who are no longer active receive updated catalog
+              prices; only users eligible for pre-16-Feb-2024 renewal pricing retain special Pro ₹5,999 and
+              Pro Max ₹8,999 annual bases.
             </p>
             <p className="font-medium">
-              Decision needed: keep both renewal tiers, collapse into a single renewal price, or sunset
-              "Renewal Before" entirely?
+              Updated names are shown with the legacy name in brackets for QA traceability (for example,
+              <em> Pro (Platinum)</em>).
             </p>
           </CardContent>
         </Card>
@@ -85,9 +79,9 @@ const PricingRules = () => {
           <Row label="Fresh — Before 22 Jun 2026" value="First purchase before 22 Jun 2026 (legacy catalog)" />
           <Row label="Fresh — After 22 Jun 2026" value="First purchase on/after 22 Jun 2026 (new catalog: Starter/Standard/Growth/Advanced)" />
           <Row label="Never purchased (as of 4 Aug 2026)" value="No monthly or annual plan ever bought — new catalog prices, regardless of signup date" />
-          <Row label="Renewal — After 16 Feb 2024" value="First purchase on/after 16 Feb 2024, renewing" />
-          <Row label="Renewal — Before 16 Feb 2024" value="First purchase before 16 Feb 2024, renewing" />
-          <Row label="Upgrade" value="Existing active plan, upgrading tier/duration (uses Renewal-After prices)" />
+          <Row label="Expired historical purchaser" value="Purchased before, currently inactive — full updated catalog" />
+          <Row label="Renewal — Before 16 Feb 2024" value="Eligible historical user — updated names, with Pro ₹5,999 and Pro Max ₹8,999 annual bases" />
+          <Row label="Upgrade" value="Existing active plan — credit uses original purchase basis; new plan uses updated catalog or pre-Feb-2024 eligible base" />
         </SectionCard>
 
         {/* 2. Annual base prices */}
@@ -99,7 +93,7 @@ const PricingRules = () => {
                   <th className="text-left p-2">Plan (legacy → new name)</th>
                   <th className="text-right p-2">Fresh (legacy)</th>
                   <th className="text-right p-2">New catalog<br /><span className="font-normal text-xs">(after 22 Jun 2026 / never purchased)</span></th>
-                  <th className="text-right p-2">Renewal After</th>
+                  <th className="text-right p-2">Expired / updated</th>
                   <th className="text-right p-2">Renewal Before</th>
                 </tr>
               </thead>
@@ -113,7 +107,7 @@ const PricingRules = () => {
                     <td className="p-2 text-right text-emerald-700 font-medium">
                       {p === "enterprise" ? `${formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026[p])}+` : formatINR(ANNUAL_DISCOUNTED.fresh_v2_2026[p])}
                     </td>
-                    <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.renewal_after[p])}</td>
+                    <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.expired_historical[p])}</td>
                     <td className="p-2 text-right">{formatINR(ANNUAL_DISCOUNTED.renewal_before[p])}</td>
                   </tr>
                 ))}
@@ -121,9 +115,9 @@ const PricingRules = () => {
             </table>
           </div>
           <p className="text-xs text-muted-foreground pt-2">
-            From 22 Jun 2026 the catalog is renamed: Silver→Starter, Diamond→Standard, Platinum→Growth, Enterprise→Advanced.
-            Advanced is sales-touch only; ₹6,840 is the starting price before customization.
-            The new catalog applies to first purchases on/after 22 Jun 2026 and to any user with no prior purchase as of 4 Aug 2026.
+            Updated names in this release: Silver→Lite, Diamond→Plus, Platinum→Pro, Enterprise→Pro Max.
+            Pro Max starts at ₹6,840 before customization. Expired historical purchasers receive this full updated table.
+            Pre-16-Feb-2024 eligible users use updated Lite/Plus prices and special Pro ₹5,999 / Pro Max ₹8,999 annual bases.
           </p>
         </SectionCard>
 
@@ -255,16 +249,15 @@ const PricingRules = () => {
             </table>
           </div>
           <p className="text-xs text-muted-foreground pt-2">
-            Quarterly is a brand-new billing cycle introduced with the post-22-Jun-2026 catalog
-            (legacy cohorts have only monthly &amp; yearly). Advanced (Enterprise) prices are shown
-            for reference but the plan is sales-touch only.
+            Quarterly pricing continues as currently configured. This prototype does not model the Cohort P
+            exception because it was explicitly excluded from this release scope. Pro Max starts at ₹6,840/year.
           </p>
         </SectionCard>
 
         {/* 8. Upgrade rules */}
         <SectionCard title="8. Upgrade Rules">
           <Row label="Credit formula" value="(total paid ÷ total days) × remaining days" />
-          <Row label="Yearly upgrade — current plan price" value="Based on cohort of first purchase (Fresh / R-After / R-Before)" />
+          <Row label="Yearly upgrade — current plan price" value="Updated catalog for normal users; pre-16-Feb-2024 eligible users retain special Pro / Pro Max bases" />
           <Row label="Monthly → Yearly (same tier)" value="No credit; validity = 365×yrs + remaining days" />
           <Row label="Monthly → Yearly (higher tier)" value="Pro-rata credit applied; validity = 365×yrs" />
           <Row label="Restrictions" value="No downgrades, no identical plan re-purchase, tenure caps apply" />
