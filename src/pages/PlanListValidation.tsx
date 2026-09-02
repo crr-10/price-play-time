@@ -35,7 +35,7 @@ const PLAN_BUTTON_STYLES: Record<PlanName, string> = {
 };
 
 const PLAN_DESCRIPTIONS: Record<PlanName, string> = {
-  silver: "Starter plan for individuals (Android only)",
+  silver: "Entry plan for individuals (Android only)",
   diamond: "Essential plan for small business owners",
   platinum: "More users, more flexibility, and a Desktop app",
   enterprise: "Fully customizable for bigger businesses",

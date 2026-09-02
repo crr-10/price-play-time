@@ -130,8 +130,8 @@ const CHECKOUT_SCENARIOS: CheckoutScenario[] = [
   { label: "Renewal eligible (pre-Feb-24) + Pro Max + 5yr", userType: "renewal_before", plan: "enterprise", duration: "5yr", coupon: 0 },
   { label: "Post-22-Jun-2026 + Lite + 1yr", userType: "fresh_v2_2026", plan: "silver", duration: "1yr", coupon: 0 },
   { label: "Post-22-Jun-2026 + Pro + 3yr (multi-year)", userType: "fresh_v2_2026", plan: "platinum", duration: "3yr", coupon: 0 },
-  { label: "Fresh v2 + Advanced + 1yr (base)", userType: "fresh_v2_2026", plan: "enterprise", duration: "1yr", coupon: 0 },
-  { label: "Never purchased (4 Aug 2026) + Standard + 1yr", userType: "never_purchased", plan: "diamond", duration: "1yr", coupon: 0 },
+  { label: "Post-22-Jun-2026 + Pro Max + 1yr (base)", userType: "fresh_v2_2026", plan: "enterprise", duration: "1yr", coupon: 0 },
+  { label: "Never purchased (4 Aug 2026) + Plus + 1yr", userType: "never_purchased", plan: "diamond", duration: "1yr", coupon: 0 },
   {
     label: "Upgrade: Diamond → Platinum, 1yr",
     userType: "upgrade", plan: "platinum", duration: "1yr", coupon: 0,
